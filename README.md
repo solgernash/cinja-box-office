@@ -8,11 +8,11 @@ The application allows guests to browse and search for movies, while authenticat
 
 ## Team Members
 
-- Abhinav Aravind
-- Ido Niv
-- Joshua Lumogdang
 - Chloe Malimban
+- Ido Niv
 - Nash Carroll
+- Joshua Lumogdang
+- Abhinav Aravind
 
 ## Project Features
 
