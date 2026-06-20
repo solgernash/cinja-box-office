@@ -99,15 +99,6 @@ function loadGenres() {
   });
 }
 
-/*
-  Fuzzy search helpers
-
-  This lets users type imperfect searches like:
-  - "shado circut" -> "Shadow Circuit"
-  - "midnite dojo" -> "Midnight Dojo"
-  - "popcorn roninn" -> "Popcorn Ronin"
-  - "neon shurkin" -> "Neon Shuriken"
-*/
 
 function normalizeText(text) {
   return text
