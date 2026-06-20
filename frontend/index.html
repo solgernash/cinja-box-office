@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cinema Ninja | CINJA Box Office</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="smoke smoke-one"></div>
+  <div class="smoke smoke-two"></div>
+  <header class="site-header">
+    <a class="brand" href="#top" aria-label="Cinema Ninja home">
+      <span class="brand-mark">忍</span>
+      <span>
+        <strong>Cinema Ninja</strong>
+        <small>CINJA Box Office</small>
+      </span>
+    </a>
+    <nav class="main-nav" aria-label="Primary navigation">
+      <a href="#now-playing">Now Playing</a>
+      <a href="#coming-soon">Coming Soon</a>
+    </nav>
+    <a class="ghost-button" href="#movie-grid">Browse Movies</a>
+  </header>
+
+  <main id="top">
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="hero-copy">
+        <p class="eyebrow">Silent seats. Sharp tickets. Zero waiting.</p>
+        <h1 id="hero-title">Strike fast. Book your next movie like a ninja.</h1>
+        <p class="hero-text">
+          Cinema Ninja turns movie discovery, showtimes, trailers, and seat selection into a stealthy e-ticket experience for the CINJA team project.
+        </p>
+        <div class="hero-actions">
+          <a class="primary-button" href="#movie-grid">Enter the Dojo</a>
+        </div>
+        <dl class="hero-stats" aria-label="Cinema Ninja highlights">
+          <div>
+            <dt>10+</dt>
+            <dd>Seed-ready movies</dd>
+          </div>
+          <div>
+            <dt>3</dt>
+            <dd>Ticket categories</dd>
+          </div>
+          <div>
+            <dt>0</dt>
+            <dd>Checkout friction</dd>
+          </div>
+        </dl>
+      </div>
+
+      <aside class="hero-card" aria-label="Featured movie card">
+        <div class="moon"></div>
+        <div class="katana-line"></div>
+        <p class="card-label">Featured Mission</p>
+        <h2>Shadow Premiere</h2>
+        <p>Pick a showtime, claim a seat, and disappear into the story before the trailers end.</p>
+        <div class="ticket-strip">
+          <span>Hall 04</span>
+          <span>8:00 PM</span>
+          <span>IMAX</span>
+        </div>
+      </aside>
+    </section>
+
+    <section class="control-panel" aria-labelledby="find-title">
+      <div>
+        <p class="section-kicker">Movie Intel</p>
+        <h2 id="find-title">Find your target</h2>
+      </div>
+      <form class="search-form" role="search">
+        <label for="searchInput" class="sr-only">Search movies by title</label>
+        <input id="searchInput" type="search" placeholder="Search by title..." autocomplete="off" />
+        <label for="genreFilter" class="sr-only">Filter by genre</label>
+        <select id="genreFilter">
+          <option value="all">All genres</option>
+        </select>
+        <label for="dateFilter" class="sr-only">Filter by show date</label>
+        <select id="dateFilter">
+          <option value="all">Any show date</option>
+          <option value="today">Today</option>
+          <option value="weekend">This weekend</option>
+        </select>
+      </form>
+    </section>
+
+    <section id="movie-grid" class="movies-section" aria-live="polite">
+      <div class="section-heading" id="now-playing">
+        <p class="section-kicker">Now Playing</p>
+        <h2>Currently Running</h2>
+      </div>
+      <div id="runningMovies" class="movie-grid"></div>
+
+      <div class="section-heading coming-heading" id="coming-soon">
+        <p class="section-kicker">Next Assignments</p>
+        <h2>Coming Soon</h2>
+      </div>
+      <div id="comingMovies" class="movie-grid"></div>
+      <p id="emptyState" class="empty-state" hidden>No matching movies found. Adjust the search or genre filter.</p>
+    </section>
+  </main>
+
+  <dialog id="movieDialog" class="movie-dialog" aria-labelledby="dialogTitle">
+    <button class="close-dialog" id="closeDialog" type="button" aria-label="Close movie details">x</button>
+    <div id="dialogContent"></div>
+  </dialog>
+
+  <footer class="site-footer">
+    <p>Cinema Ninja was forged by CINJA: Chloe, Ido, Nash, Joshua, and Abhinav.</p>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
