@@ -5,46 +5,37 @@ import java.util.List;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 
 @Document(collection = "movies")
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 public class Movie {
     @Id
     private String id;
     private String title;
+    private String runtime;
     private String genre;
     private String rating;
     private String description;
+
+    @JsonProperty("poster")
     private String posterUrl;
+    @JsonProperty("trailer")
     private String trailerUrl;
+
+
     private String status;      // RUNNING or COMING_SOON
     private List<String> showtimes;
 
-
-
-
     public Movie() {
-
 
     } //default constructor
 
-
-    public Movie(String id, String title, String genre, String rating, String description, String posterUrl,  String trailerUrl, String status, List<String> showtimes) {
+    public Movie(String id, String title, String runtime, String genre, String rating, String description, String posterUrl,  String trailerUrl, String status, List<String> showtimes) {
         this.id = id;
         this.title = title;
+        this.runtime = runtime;
         this.genre = genre;
         this.rating = rating;
         this.description = description;
@@ -162,8 +153,11 @@ public class Movie {
     }
 
 
+    public String getRuntime() {
+        return runtime;
+    }
 
-
-
-
+    public void setRuntime(String runtime) {
+        this.runtime = runtime;
+    }
 }  //end class
