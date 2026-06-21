@@ -87,6 +87,8 @@ const emptyState = document.querySelector("#emptyState");
 const movieDialog = document.querySelector("#movieDialog");
 const dialogContent = document.querySelector("#dialogContent");
 const closeDialog = document.querySelector("#closeDialog");
+const siteHeader = document.querySelector(".site-header");
+const scrollProgress = document.querySelector(".scroll-progress");
 
 function loadGenres() {
   const genres = [...new Set(movies.map((movie) => movie.genre))].sort();
@@ -253,6 +255,50 @@ function movieCard(movie) {
   return article;
 }
 
+function observeScrollAnimations() {
+  const animatedElements = document.querySelectorAll(
+    ".reveal, .reveal-slide-left, .reveal-slide-right, .movie-card"
+  );
+
+  if (!("IntersectionObserver" in window)) {
+    animatedElements.forEach((element) => element.classList.add("is-visible"));
+    return;
+  }
+
+  const observer = new IntersectionObserver(
+    (entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add("is-visible");
+          observer.unobserve(entry.target);
+        }
+      });
+    },
+    {
+      threshold: 0.16,
+      rootMargin: "0px 0px -70px 0px"
+    }
+  );
+
+  animatedElements.forEach((element, index) => {
+    element.style.transitionDelay = `${Math.min(index * 55, 420)}ms`;
+    observer.observe(element);
+  });
+}
+
+function updateScrollEffects() {
+  const scrollableHeight = document.documentElement.scrollHeight - window.innerHeight;
+  const scrollPercent = scrollableHeight > 0 ? (window.scrollY / scrollableHeight) * 100 : 0;
+
+  if (scrollProgress) {
+    scrollProgress.style.width = `${scrollPercent}%`;
+  }
+
+  if (siteHeader) {
+    siteHeader.classList.toggle("header-scrolled", window.scrollY > 20);
+  }
+}
+
 function renderMovies() {
   runningMovies.innerHTML = "";
   comingMovies.innerHTML = "";
@@ -282,6 +328,7 @@ function renderMovies() {
   });
 
   emptyState.hidden = filtered.length > 0;
+  observeScrollAnimations();
 }
 
 function openMovieDetails(movie) {
@@ -329,14 +376,19 @@ function handleClick(event) {
 
   if (showtimeTitle && showtime && showtime !== "Coming Soon") {
     const bookingSection = document.querySelector("#booking");
-    const bookingTitle = bookingSection.querySelector("#booking-title");
 
-    bookingTitle.textContent = `${showtimeTitle} at ${showtime}`;
+    if (bookingSection) {
+      const bookingTitle = bookingSection.querySelector("#booking-title");
 
-    bookingSection.scrollIntoView({
-      behavior: "smooth",
-      block: "center"
-    });
+      if (bookingTitle) {
+        bookingTitle.textContent = `${showtimeTitle} at ${showtime}`;
+      }
+
+      bookingSection.scrollIntoView({
+        behavior: "smooth",
+        block: "center"
+      });
+    }
 
     if (movieDialog.open) {
       movieDialog.close();
@@ -346,6 +398,7 @@ function handleClick(event) {
 
 searchInput.addEventListener("input", renderMovies);
 genreFilter.addEventListener("change", renderMovies);
+window.addEventListener("scroll", updateScrollEffects, { passive: true });
 
 document.addEventListener("click", handleClick);
 
@@ -361,3 +414,5 @@ movieDialog.addEventListener("click", (event) => {
 
 loadGenres();
 renderMovies();
+observeScrollAnimations();
+updateScrollEffects();

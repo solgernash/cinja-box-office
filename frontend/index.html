@@ -8,8 +8,15 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='18' fill='%23050507'/%3E%3Ctext x='50' y='68' text-anchor='middle' font-size='58' fill='%23f8c14a'%3E忍%3C/text%3E%3C/svg%3E">
 </head>
 <body>
+  <div class="scroll-progress" aria-hidden="true"></div>
+  <div class="shuriken-field" aria-hidden="true">
+    <span class="shuriken shuriken-one">✦</span>
+    <span class="shuriken shuriken-two">✦</span>
+    <span class="shuriken shuriken-three">✦</span>
+  </div>
   <div class="smoke smoke-one"></div>
   <div class="smoke smoke-two"></div>
   <header class="site-header">
@@ -28,8 +35,8 @@
   </header>
 
   <main id="top">
-    <section class="hero" aria-labelledby="hero-title">
-      <div class="hero-copy">
+    <section class="hero reveal" aria-labelledby="hero-title">
+      <div class="hero-copy reveal-slide-left">
         <p class="eyebrow">Silent seats. Sharp tickets. Zero waiting.</p>
         <h1 id="hero-title">Strike fast. Book your next movie like a ninja.</h1>
         <p class="hero-text">
@@ -46,7 +53,7 @@
         </dl>
       </div>
 
-      <aside class="hero-card" aria-label="Featured movie card">
+      <aside class="hero-card reveal-slide-right" aria-label="Featured movie card">
         <div class="moon"></div>
         <div class="katana-line"></div>
         <p class="card-label">Featured Mission</p>
@@ -60,7 +67,7 @@
       </aside>
     </section>
 
-    <section class="control-panel" aria-labelledby="find-title">
+    <section class="control-panel reveal" aria-labelledby="find-title">
       <div>
         <p class="section-kicker">Movie Intel</p>
         <h2 id="find-title">Find your target</h2>
@@ -81,14 +88,14 @@
       </form>
     </section>
 
-    <section id="movie-grid" class="movies-section" aria-live="polite">
-      <div class="section-heading" id="now-playing">
+    <section id="movie-grid" class="movies-section reveal" aria-live="polite">
+      <div class="section-heading reveal-slide-left" id="now-playing">
         <p class="section-kicker">Now Playing</p>
         <h2>Currently Running</h2>
       </div>
       <div id="runningMovies" class="movie-grid"></div>
 
-      <div class="section-heading coming-heading" id="coming-soon">
+      <div class="section-heading coming-heading reveal-slide-left" id="coming-soon">
         <p class="section-kicker">Next Assignments</p>
         <h2>Coming Soon</h2>
       </div>
@@ -102,7 +109,7 @@
     <div id="dialogContent"></div>
   </dialog>
 
-  <footer class="site-footer">
+  <footer class="site-footer reveal">
     <p>Cinema Ninja was forged by CINJA: Chloe, Ido, Nash, Joshua, and Abhinav.</p>
   </footer>
 
