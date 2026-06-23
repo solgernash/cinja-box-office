@@ -7,6 +7,12 @@ import org.springframework.stereotype.Component;
 
 import java.util.List;
 
+
+/*
+ * @Component -> makes this class Spring-managed
+ * CommandLineRunner -> runs this code automatically when the Spring Boot app starts
+ * Purpose: Seed the database with sample data
+ */
 @Component
 public class DataSeeder implements CommandLineRunner {
 
@@ -16,6 +22,8 @@ public class DataSeeder implements CommandLineRunner {
         this.movieRepository = movieRepository;
     }
 
+
+    //runs automatically at application startup
     @Override
     public void run(String... args) {
 
