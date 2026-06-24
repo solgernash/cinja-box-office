@@ -284,15 +284,34 @@ input:focus, select:focus { border-color: rgba(248,193,74,0.8); box-shadow: 0 0 
 
 .booking-preview {
   display: grid;
-  grid-template-columns: 1fr minmax(280px, 440px);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 2rem;
-  align-items: center;
+  align-items: stretch;
   padding: clamp(1.5rem, 4vw, 3rem);
   border: 1px solid var(--line);
   border-radius: 2rem;
   background: linear-gradient(145deg, rgba(227,34,54,0.15), rgba(255,255,255,0.05));
+  scroll-margin-top: 7rem;
 }
+
 .booking-copy p { max-width: 680px; color: var(--muted); line-height: 1.7; }
+.booking-copy,
+.booking-card {
+  min-width: 0;
+  width: 100%;
+}
+
+.booking-copy {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.booking-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
 .booking-card { padding: 1rem; border-radius: 1.4rem; background: rgba(0,0,0,0.34); border: 1px solid var(--line); }
 .booking-row { display: grid; grid-template-columns: 1fr auto auto; gap: 1rem; align-items: center; padding: 0.85rem 0; border-bottom: 1px solid var(--line); }
 .booking-row button { border: 0; border-radius: 0.7rem; padding: 0.45rem 0.75rem; font-weight: 900; background: var(--gold); }
@@ -301,6 +320,27 @@ input:focus, select:focus { border-color: rgba(248,193,74,0.8); box-shadow: 0 0 
 .seat { min-height: 2.4rem; color: var(--text); background: #232838; border: 1px solid var(--line); border-radius: 0.7rem 0.7rem 0.25rem 0.25rem; cursor: pointer; }
 .seat.selected { color: #111; background: var(--gold); }
 .seat.taken { color: #657083; background: #141720; cursor: not-allowed; }
+
+.booking-preview.booking-pulse {
+  animation: bookingPulse 900ms ease;
+}
+
+@keyframes bookingPulse {
+  0% {
+    box-shadow: 0 0 0 rgba(248, 193, 74, 0);
+    border-color: var(--line);
+  }
+
+  45% {
+    box-shadow: 0 0 46px rgba(248, 193, 74, 0.28);
+    border-color: rgba(248, 193, 74, 0.65);
+  }
+
+  100% {
+    box-shadow: 0 0 0 rgba(248, 193, 74, 0);
+    border-color: var(--line);
+  }
+}
 
 .movie-dialog {
   width: min(860px, calc(100vw - 2rem));
@@ -481,15 +521,114 @@ input:focus, select:focus { border-color: rgba(248,193,74,0.8); box-shadow: 0 0 
     filter: none;
   }
 }
-
-.ticket-inputs{
-    display:flex;
-    flex-direction:column;
-    gap:12px;
+.ticket-inputs {
+  display: grid;
+  gap: 0.9rem;
+  margin-top: 1rem;
 }
 
-.ticket-inputs label{
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
+.ticket-type-card {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: 1.15rem;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.075), rgba(255, 255, 255, 0.025)),
+    rgba(0, 0, 0, 0.24);
+  overflow: hidden;
+}
+
+.ticket-type-card::before,
+.ticket-type-card::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  width: 1.15rem;
+  height: 1.15rem;
+  border-radius: 50%;
+  background: rgba(10, 10, 14, 0.92);
+  border: 1px solid var(--line);
+  transform: translateY(-50%);
+}
+
+.ticket-type-card::before {
+  left: -0.6rem;
+}
+
+.ticket-type-card::after {
+  right: -0.6rem;
+}
+
+.ticket-label {
+  display: block;
+  color: var(--text);
+  font-weight: 900;
+  font-size: 1rem;
+}
+
+.ticket-price {
+  display: block;
+  margin-top: 0.25rem;
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
+.quantity-stepper {
+  display: inline-grid;
+  grid-template-columns: 2.4rem 3.2rem 2.4rem;
+  align-items: center;
+  min-height: 2.8rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.38);
+  overflow: hidden;
+}
+
+.quantity-stepper input {
+  width: 3.2rem;
+  min-height: 2.8rem;
+  padding: 0;
+  color: var(--text);
+  text-align: center;
+  border: 0;
+  border-left: 1px solid var(--line);
+  border-right: 1px solid var(--line);
+  border-radius: 0;
+  background: transparent;
+  font-weight: 900;
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+.quantity-stepper input::-webkit-outer-spin-button,
+.quantity-stepper input::-webkit-inner-spin-button {
+  margin: 0;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.quantity-button {
+  width: 100%;
+  height: 100%;
+  min-height: 2.8rem;
+  cursor: pointer;
+  color: var(--text);
+  border: 0;
+  background: transparent;
+  font-size: 1.2rem;
+  font-weight: 900;
+  transition: background 160ms ease, color 160ms ease, transform 160ms ease;
+}
+
+.quantity-button:hover {
+  color: #111;
+  background: var(--gold);
+}
+
+.quantity-button:active {
+  transform: scale(0.92);
 }

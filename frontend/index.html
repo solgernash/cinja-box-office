@@ -112,18 +112,45 @@
       <h3>Ticket Quantity</h3>
 
       <div class="ticket-inputs">
-        <label>Adult - $12
-        <input type="number" min="0" value="0">
-        </label>
+  <div class="ticket-type-card">
+    <div>
+      <span class="ticket-label">Adult</span>
+      <span class="ticket-price">$12.00 each</span>
+    </div>
 
-        <label>Child - $8
-        <input type="number" min="0" value="0">
-        </label>
+    <div class="quantity-stepper" aria-label="Adult ticket quantity">
+      <button type="button" class="quantity-button" data-ticket-action="decrease" data-ticket-input="adultTickets">−</button>
+      <input id="adultTickets" type="number" min="0" value="0" aria-label="Adult tickets">
+      <button type="button" class="quantity-button" data-ticket-action="increase" data-ticket-input="adultTickets">+</button>
+    </div>
+  </div>
 
-        <label>Senior - $10
-        <input type="number" min="0" value="0">
-        </label>
-      </div>
+  <div class="ticket-type-card">
+    <div>
+      <span class="ticket-label">Child</span>
+      <span class="ticket-price">$8.00 each</span>
+    </div>
+
+    <div class="quantity-stepper" aria-label="Child ticket quantity">
+      <button type="button" class="quantity-button" data-ticket-action="decrease" data-ticket-input="childTickets">−</button>
+      <input id="childTickets" type="number" min="0" value="0" aria-label="Child tickets">
+      <button type="button" class="quantity-button" data-ticket-action="increase" data-ticket-input="childTickets">+</button>
+    </div>
+  </div>
+
+  <div class="ticket-type-card">
+    <div>
+      <span class="ticket-label">Senior</span>
+      <span class="ticket-price">$10.00 each</span>
+    </div>
+
+    <div class="quantity-stepper" aria-label="Senior ticket quantity">
+      <button type="button" class="quantity-button" data-ticket-action="decrease" data-ticket-input="seniorTickets">−</button>
+      <input id="seniorTickets" type="number" min="0" value="0" aria-label="Senior tickets">
+      <button type="button" class="quantity-button" data-ticket-action="increase" data-ticket-input="seniorTickets">+</button>
+    </div>
+  </div>
+</div>
     </div>
 
   <div class="booking-card">

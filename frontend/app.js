@@ -386,8 +386,11 @@ function handleClick(event) {
 
       bookingSection.scrollIntoView({
         behavior: "smooth",
-        block: "center"
-      });
+        block: "start"
+});
+    bookingSection.classList.remove("booking-pulse");
+    void bookingSection.offsetWidth;
+    bookingSection.classList.add("booking-pulse");
     }
 
     if (movieDialog.open) {
@@ -431,3 +434,35 @@ document.addEventListener("click", function(event) {
       selected.length > 0 ? selected.join(", ") : "None";
   }
 });
+
+function setupTicketQuantityControls() {
+  document.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-ticket-action]");
+
+    if (!button) {
+      return;
+    }
+
+    const inputId = button.dataset.ticketInput;
+    const action = button.dataset.ticketAction;
+    const input = document.getElementById(inputId);
+
+    if (!input) {
+      return;
+    }
+
+    const currentValue = Number(input.value) || 0;
+
+    if (action === "increase") {
+      input.value = currentValue + 1;
+    }
+
+    if (action === "decrease") {
+      input.value = Math.max(0, currentValue - 1);
+    }
+
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+}
+
+setupTicketQuantityControls();
