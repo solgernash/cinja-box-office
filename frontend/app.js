@@ -383,6 +383,7 @@ function handleClick(event) {
       if (bookingTitle) {
         bookingTitle.textContent = `${showtimeTitle} at ${showtime}`;
       }
+      resetBookingSelections();
 
       bookingSection.scrollIntoView({
         behavior: "smooth",
@@ -396,6 +397,20 @@ function handleClick(event) {
     if (movieDialog.open) {
       movieDialog.close();
     }
+  }
+}
+
+function updateBookingTotal() {
+  const adultTickets = Number(document.querySelector("#adultTickets")?.value) || 0;
+  const childTickets = Number(document.querySelector("#childTickets")?.value) || 0;
+  const seniorTickets = Number(document.querySelector("#seniorTickets")?.value) || 0;
+
+  const total = adultTickets * 12 + childTickets * 8 + seniorTickets * 10;
+
+  const bookingTotal = document.querySelector("#bookingTotal");
+
+  if (bookingTotal) {
+    bookingTotal.textContent = `$${total.toFixed(2)}`;
   }
 }
 
@@ -462,7 +477,35 @@ function setupTicketQuantityControls() {
     }
 
     input.dispatchEvent(new Event("input", { bubbles: true }));
+    updateBookingTotal();
   });
 }
 
 setupTicketQuantityControls();
+
+function resetBookingSelections() {
+  const ticketInputs = document.querySelectorAll(
+    "#adultTickets, #childTickets, #seniorTickets, .ticket-inputs input"
+  );
+
+  ticketInputs.forEach((input) => {
+    input.value = 0;
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+
+  document.querySelectorAll(".seat.selected").forEach((seat) => {
+    seat.classList.remove("selected");
+  });
+
+  const selectedSeats = document.querySelector("#selectedSeats");
+
+  if (selectedSeats) {
+    selectedSeats.textContent = "None";
+  }
+
+  const totalText = document.querySelector("#bookingTotal");
+
+  if (totalText) {
+    totalText.textContent = "$0.00";
+  }
+}
