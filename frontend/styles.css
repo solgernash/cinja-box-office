@@ -481,3 +481,15 @@ input:focus, select:focus { border-color: rgba(248,193,74,0.8); box-shadow: 0 0 
     filter: none;
   }
 }
+
+.ticket-inputs{
+    display:flex;
+    flex-direction:column;
+    gap:12px;
+}
+
+.ticket-inputs label{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+}

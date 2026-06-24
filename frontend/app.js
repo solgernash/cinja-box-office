@@ -416,3 +416,18 @@ loadGenres();
 renderMovies();
 observeScrollAnimations();
 updateScrollEffects();
+
+document.addEventListener("click", function(event) {
+  if (
+    event.target.classList.contains("seat") &&
+    !event.target.classList.contains("taken")
+  ) {
+    event.target.classList.toggle("selected");
+
+    const selected = [...document.querySelectorAll(".seat.selected")]
+      .map((seat) => seat.textContent);
+
+    document.querySelector("#selectedSeats").textContent =
+      selected.length > 0 ? selected.join(", ") : "None";
+  }
+});

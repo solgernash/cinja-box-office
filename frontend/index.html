@@ -102,6 +102,60 @@
       <div id="comingMovies" class="movie-grid"></div>
       <p id="emptyState" class="empty-state" hidden>No matching movies found. Adjust the search or genre filter.</p>
     </section>
+  
+    <section id="booking" class="booking-preview reveal">
+    <div class="booking-copy">
+      <p class="section-kicker">Booking Prototype</p>
+      <h2>Choose Your Tickets</h2>
+      <p id="booking-title">Select a showtime to begin booking.</p>
+
+      <h3>Ticket Quantity</h3>
+
+      <div class="ticket-inputs">
+        <label>Adult - $12
+        <input type="number" min="0" value="0">
+        </label>
+
+        <label>Child - $8
+        <input type="number" min="0" value="0">
+        </label>
+
+        <label>Senior - $10
+        <input type="number" min="0" value="0">
+        </label>
+      </div>
+    </div>
+
+  <div class="booking-card">
+    <h3>Select Seats</h3>
+    <div class="screen">SCREEN</div>
+
+    <div class="seat-map">
+      <button class="seat">A1</button>
+      <button class="seat">A2</button>
+      <button class="seat">A3</button>
+      <button class="seat">A4</button>
+
+      <button class="seat">B1</button>
+      <button class="seat">B2</button>
+      <button class="seat taken">B3</button>
+      <button class="seat">B4</button>
+
+      <button class="seat">C1</button>
+      <button class="seat">C2</button>
+      <button class="seat">C3</button>
+      <button class="seat">C4</button>
+    </div>
+
+      <p>Selected seats: <span id="selectedSeats">None</span></p>
+
+      <p><strong>Total:</strong> $0.00</p>
+
+      <button class="primary-button" type="button">
+        Continue to Checkout
+      </button>
+      </div>
+    </section>
   </main>
 
   <dialog id="movieDialog" class="movie-dialog" aria-labelledby="dialogTitle">
