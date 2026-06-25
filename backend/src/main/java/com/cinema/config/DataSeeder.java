@@ -26,6 +26,10 @@ public class DataSeeder implements CommandLineRunner {
     //runs automatically at application startup
     @Override
     public void run(String... args) {
+        if (movieRepository.count() > 0) {
+            System.out.println("Database already contains movies. Skipping seeding.");
+            return;
+        }
 
         Movie movie1 = new Movie(
                 null,

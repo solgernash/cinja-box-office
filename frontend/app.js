@@ -1,4 +1,4 @@
-const movies = [
+let movies = [
   {
     title: "Shadow Circuit",
     genre: "Action",
@@ -91,6 +91,7 @@ const siteHeader = document.querySelector(".site-header");
 const scrollProgress = document.querySelector(".scroll-progress");
 
 function loadGenres() {
+  
   const genres = [...new Set(movies.map((movie) => movie.genre))].sort();
 
   genres.forEach((genre) => {
@@ -99,6 +100,38 @@ function loadGenres() {
     option.textContent = genre;
     genreFilter.appendChild(option);
   });
+}
+
+function normalizeMovieStatus(status) {
+  if (!status) return "";
+  const s = status.toUpperCase().replace(/_/g, " ").trim();
+  if (s === "RUNNING" || s === "CURRENTLY RUNNING") {
+    return "Currently Running";
+  }
+  if (s === "COMING SOON" || s === "COMING_SOON") {
+    return "Coming Soon";
+  }
+  return status;
+}
+
+async function fetchMoviesFromBackend() {
+  try {
+    const response = await fetch("http://localhost:8080/api/movies");
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    const data = await response.json();
+    if (Array.isArray(data) && data.length > 0) {
+      movies = data.map(movie => ({
+        ...movie,
+        status: normalizeMovieStatus(movie.status)
+      }));
+      loadGenres();
+      renderMovies();
+    }
+  } catch (error) {
+    console.error("Error fetching movies from MongoDB Atlas via backend:", error);
+  }
 }
 
 
@@ -434,6 +467,7 @@ loadGenres();
 renderMovies();
 observeScrollAnimations();
 updateScrollEffects();
+fetchMoviesFromBackend();
 
 document.addEventListener("click", function(event) {
   if (
