@@ -28,6 +28,9 @@ public class Movie {
     private String status;      // RUNNING or COMING_SOON
     private List<String> showtimes;
 
+
+    private List<Favorite> favorites;
+
     public Movie() {
 
     } //default constructor
@@ -159,5 +162,14 @@ public class Movie {
 
     public void setRuntime(String runtime) {
         this.runtime = runtime;
+    }
+
+
+    public List<Favorite> getFavorites() {
+        return favorites;
+    }
+
+    public void setFavorites(List<Favorite> favorites) {
+        this.favorites = favorites;
     }
 }  //end class
