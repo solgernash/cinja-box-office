@@ -1,12 +1,23 @@
 package com.cinema.config;
 
+import com.cinema.model.AccountState;
+import com.cinema.model.Address;
+import com.cinema.model.Admin;
+import com.cinema.model.Customer;
+import com.cinema.model.Favorite;
 import com.cinema.model.Movie;
+import com.cinema.model.PaymentCard;
+import com.cinema.repository.AddressRepository;
+import com.cinema.repository.FavoriteRepository;
 import com.cinema.repository.MovieRepository;
+import com.cinema.repository.PaymentCardRepository;
+import com.cinema.repository.UserRepository;
+
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 
+import java.util.Date;
 import java.util.List;
-
 
 /*
  * @Component -> makes this class Spring-managed
@@ -16,21 +27,56 @@ import java.util.List;
 @Component
 public class DataSeeder implements CommandLineRunner {
 
-    private final MovieRepository movieRepository;
 
-    public DataSeeder(MovieRepository movieRepository) {
+    //fields
+    private final MovieRepository movieRepository;
+    private final UserRepository userRepository;
+    private final FavoriteRepository favoriteRepository;
+    private final PaymentCardRepository paymentCardRepository;
+    private final AddressRepository addressRepository;
+
+
+
+
+
+    //constructor
+    public DataSeeder(MovieRepository movieRepository, UserRepository userRepository, FavoriteRepository favoriteRepository, PaymentCardRepository paymentCardRepository, AddressRepository addressRepository)
+    {
         this.movieRepository = movieRepository;
+        this.userRepository = userRepository;
+        this.favoriteRepository = favoriteRepository;
+        this.paymentCardRepository = paymentCardRepository;
+        this.addressRepository = addressRepository;
     }
 
 
     //runs automatically at application startup
     @Override
     public void run(String... args) {
-        if (movieRepository.count() > 0) {
-            System.out.println("Database already contains movies. Skipping seeding.");
-            return;
+        if(movieRepository.count()==0)
+            seedMovies();
+
+        if(userRepository.count()==0) {
+            seedCustomer();
+            seedAdmin();
         }
 
+
+        if(favoriteRepository.count()==0)
+            seedFavorites();
+
+        if(paymentCardRepository.count()==0)
+            seedPaymentCards();
+
+        if(addressRepository.count()==0)
+            seedAddresses();
+
+    } //end run method
+
+
+    //------------Movie--------------//
+
+    public void seedMovies() {
         Movie movie1 = new Movie(
                 null,
                 "Shadow Circuit",
@@ -179,7 +225,144 @@ public class DataSeeder implements CommandLineRunner {
                 List.of("Coming Soon")
         );
         movieRepository.save(movie10);
+    }
 
-    } //end run method
+    //------------- Admin Seeding -------------//
+
+    public void seedAdmin() {
+        Admin admin1 = new Admin("ADMIN 0001", "System", "Administrator", "admin1@cinema.com", "Admin1123!");
+        Admin admin2 = new Admin("ADMIN 0002", "Movie", "Manager", "admin2@cinema.com", "Admin2123!");
+        userRepository.save(admin1);
+        userRepository.save(admin2);
+    }
+
+    //------------ Customer Seeding -------------//
+     public void seedCustomer() {
+         // Verified customer with favorite movie
+         Customer customer1 = new Customer(
+                 "USER 0001",
+                 "John",
+                 "Smith",
+                 "john.smith@gmail.com",
+                 "Password123!",
+                 AccountState.ACTIVE
+         );
+
+
+         // Verified customer with 3 payment cards
+         Customer customer2 = new Customer(
+                 "USER 0002",
+                 "Sarah",
+                 "Johnson",
+                 "sarah.johnson@gmail.com",
+                 "Password456!",
+                 AccountState.ACTIVE
+         );
+
+
+         userRepository.save(customer1);
+         userRepository.save(customer2);
+     }
+
+
+     //----------favorite seeding-----------
+     public void seedFavorites() {
+
+         Customer customer = (Customer) userRepository.findByEmail("john.smith@gmail.com");
+         Movie movie = movieRepository.findByTitleContainingIgnoreCase("Shadow Circuit")
+                 .get(0);
+
+
+         Favorite favorite = new Favorite(new Date());
+
+         favorite.setCustomer(customer);
+         favorite.setMovie(movie);
+
+
+         favoriteRepository.save(favorite);
+     }
+
+    //---------payment cards seeding -----------//
+    //---------payment cards seeding -----------//
+    public void seedPaymentCards() {
+
+        Customer customer = (Customer) userRepository.findByEmail("sarah.johnson@gmail.com");
+
+
+        PaymentCard card1 = new PaymentCard(
+                null,
+                "4111111111111111",
+                "Sarah Johnson",
+                "12/28"
+        );
+
+        card1.setCustomer(customer);
+
+
+        PaymentCard card2 = new PaymentCard(
+                null,
+                "5555555555554444",
+                "Sarah Johnson",
+                "06/29"
+        );
+
+        card2.setCustomer(customer);
+
+
+        PaymentCard card3 = new PaymentCard(
+                null,
+                "378282246310005",
+                "Sarah Johnson",
+                "09/30"
+        );
+
+        card3.setCustomer(customer);
+
+
+        paymentCardRepository.save(card1);
+        paymentCardRepository.save(card2);
+        paymentCardRepository.save(card3);
+    }
+
+    //--------- addresses seeding -------------//
+    public void seedAddresses() {
+
+        Customer customer1 = (Customer) userRepository.findByEmail("john.smith@gmail.com");
+
+
+        Address address1 = new Address(
+                null,
+                "123 Main Street",
+                "Athens",
+                "Georgia",
+                "30601"
+        );
+
+
+        address1.setCustomer(customer1);
+
+
+        addressRepository.save(address1);
+
+        Customer customer2 = (Customer) userRepository.findByEmail("sarah.johnson@gmail.com");
+
+        Address address2 = new Address(
+                null,
+                "Downtown Atl",
+                "Atlanta",
+                "Georgia",
+                "306501"
+        );
+
+
+        address2.setCustomer(customer2);
+
+
+        addressRepository.save(address2);
+    }
+
+
+
+
 } //end class
 
