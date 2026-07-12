@@ -46,7 +46,7 @@ public class PaymentCardService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Card number is required");
         }
 
-        List<PaymentCard> existing = paymentCardRepository.findByCustomerUser_ID(userId);
+        List<PaymentCard> existing = paymentCardRepository.findByCustomerUserId(userId);
         if (existing.size() >= MAX_CARDS) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "You cannot store more than " + MAX_CARDS + " payment cards");
@@ -61,7 +61,7 @@ public class PaymentCardService {
 
     public List<Map<String, Object>> listCards(String userId) {
         List<Map<String, Object>> result = new ArrayList<>();
-        for (PaymentCard card : paymentCardRepository.findByCustomerUser_ID(userId)) {
+        for (PaymentCard card : paymentCardRepository.findByCustomerUserId(userId)) {
             result.add(toMasked(card));
         }
         return result;

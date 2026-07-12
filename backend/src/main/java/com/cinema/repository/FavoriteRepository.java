@@ -6,8 +6,12 @@ import org.springframework.stereotype.Repository;    //marks this interface as a
 
 import java.util.List;
 
+import org.springframework.data.mongodb.repository.Query;
+
 @Repository
 public interface FavoriteRepository extends MongoRepository<Favorite, String> {
-    List<Favorite> findByCustomerUser_ID(String user_ID);
+
+    @Query("{ 'customer.user_ID': ?0 }")
+    List<Favorite> findByCustomerUserId(String userId);
 
 }

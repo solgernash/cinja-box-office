@@ -190,7 +190,7 @@ public class UserService {
     public Map<String, Object> getProfile(String userId) {
         User user = requireUser(userId);
         Map<String, Object> profile = sanitizeUser(user);
-        profile.put("address", addressRepository.findByCustomerUser_ID(userId));
+        profile.put("address", addressRepository.findByCustomerUserId(userId));
         profile.put("paymentCards", paymentCardService.listCards(userId));
         profile.put("favorites", favoriteService.listFavorites(userId));
         return profile;
@@ -216,7 +216,7 @@ public class UserService {
     // Save or replace the customer's single address (max one per customer).
     public Address saveAddress(String userId, String street, String city, String state, String zipCode) {
         requireCustomer(userId);
-        Address existing = addressRepository.findByCustomerUser_ID(userId);
+        Address existing = addressRepository.findByCustomerUserId(userId);
         Address address = (existing != null) ? existing : new Address();
         address.setStreet(street);
         address.setCity(city);

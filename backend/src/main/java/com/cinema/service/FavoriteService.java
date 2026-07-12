@@ -40,7 +40,7 @@ public class FavoriteService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Movie not found"));
 
         // Avoid duplicate favorites for the same movie.
-        for (Favorite existing : favoriteRepository.findByCustomerUser_ID(userId)) {
+        for (Favorite existing : favoriteRepository.findByCustomerUserId(userId)) {
             if (existing.getMovie() != null && movieId.equals(existing.getMovie().getId())) {
                 return existing;
             }
@@ -55,7 +55,7 @@ public class FavoriteService {
     // Returns the favorited movies for display.
     public List<Movie> listFavorites(String userId) {
         List<Movie> movies = new ArrayList<>();
-        for (Favorite favorite : favoriteRepository.findByCustomerUser_ID(userId)) {
+        for (Favorite favorite : favoriteRepository.findByCustomerUserId(userId)) {
             if (favorite.getMovie() != null) {
                 movies.add(favorite.getMovie());
             }
@@ -64,7 +64,7 @@ public class FavoriteService {
     }
 
     public void removeFavorite(String userId, String movieId) {
-        for (Favorite favorite : favoriteRepository.findByCustomerUser_ID(userId)) {
+        for (Favorite favorite : favoriteRepository.findByCustomerUserId(userId)) {
             if (favorite.getMovie() != null && movieId.equals(favorite.getMovie().getId())) {
                 favoriteRepository.delete(favorite);
                 return;
