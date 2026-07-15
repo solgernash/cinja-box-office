@@ -3,13 +3,16 @@ package com.cinema.controller;
 import com.cinema.service.UserService;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Map;
 
@@ -21,7 +24,10 @@ import java.util.Map;
  */
 @RestController
 @RequestMapping("/api/auth")
-@CrossOrigin(origins = "*")
+@CrossOrigin(
+        originPatterns = {"http://localhost:*", "http://127.0.0.1:*", "null"},
+        allowCredentials = "true"
+)
 public class AuthController {
 
     private final UserService userService;
@@ -74,6 +80,20 @@ public class AuthController {
     @PostMapping("/reset-password")
     public Map<String, Object> resetPassword(@RequestBody ResetPasswordRequest request) {
         return userService.resetPassword(request.token(), request.newPassword());
+    }
+
+    @ExceptionHandler(ResponseStatusException.class)
+    public ResponseEntity<Map<String, Object>> handleAuthError(ResponseStatusException exception) {
+        String message = exception.getReason() != null
+                ? exception.getReason()
+                : "Authentication request failed";
+
+        return ResponseEntity
+                .status(exception.getStatusCode())
+                .body(Map.of(
+                        "message", message,
+                        "status", exception.getStatusCode().value()
+                ));
     }
 
     // ---- Request bodies ----

@@ -31,10 +31,16 @@
       <a href="#now-playing">Now Playing</a>
       <a href="#coming-soon">Coming Soon</a>
     </nav>
+    <button class="auth-button" id="openAuthDialog" type="button" aria-label="Open login form">
+      <svg class="auth-icon" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4Z"></path>
+        <path d="M4 20c0-3.31 3.58-6 8-6s8 2.69 8 6"></path>
+      </svg>
+    </button>
   </header>
 
   <main id="top">
-    <section class="hero reveal" aria-labelledby="hero-title">
+    <section class="hero reveal customer-view" aria-labelledby="hero-title">
       <div class="hero-copy reveal-slide-left">
         <p class="eyebrow">Silent seats. Sharp tickets. Zero waiting.</p>
         <h1 id="hero-title">Strike fast. Book your next movie like a ninja.</h1>
@@ -53,7 +59,7 @@
       </div>
     </section>
 
-    <section class="control-panel reveal" aria-labelledby="find-title">
+    <section class="control-panel reveal customer-view" aria-labelledby="find-title">
       <div>
         <p class="section-kicker">Movie Intel</p>
         <h2 id="find-title">Find your target</h2>
@@ -74,7 +80,7 @@
       </form>
     </section>
 
-    <section id="movie-grid" class="movies-section reveal" aria-live="polite">
+    <section id="movie-grid" class="movies-section reveal customer-view" aria-live="polite">
       <div class="section-heading reveal-slide-left" id="now-playing">
         <p class="section-kicker">Now Playing</p>
         <h2>Currently Running</h2>
@@ -89,7 +95,7 @@
       <p id="emptyState" class="empty-state" hidden>No matching movies found. Adjust the search or genre filter.</p>
     </section>
   
-    <section id="booking" class="booking-preview reveal">
+    <section id="booking" class="booking-preview reveal customer-view">
     <div class="booking-copy">
       <p class="section-kicker">Booking Page</p>
       <h2>Choose Your Tickets</h2>
@@ -169,11 +175,112 @@
       </button>
       </div>
     </section>
+
+    <section id="admin-portal" class="admin-portal" hidden aria-labelledby="admin-title">
+      <div class="admin-header">
+        <div>
+          <p class="section-kicker">Admin Portal</p>
+          <h1 id="admin-title">CINJA Control Room</h1>
+          <p class="admin-welcome" id="adminWelcome">Signed in as admin.</p>
+        </div>
+        <button class="secondary-button" id="backToCinema" type="button">Back to Cinema</button>
+      </div>
+
+      <div class="admin-menu" aria-label="Admin menu">
+        <button class="admin-menu-card" type="button">
+          <span>Manage Movies</span>
+          <small>Add, edit, remove, and review movie listings.</small>
+        </button>
+        <button class="admin-menu-card" type="button">
+          <span>Promotions</span>
+          <small>Create promo codes and schedule campaign offers.</small>
+        </button>
+        <button class="admin-menu-card" type="button">
+          <span>Users</span>
+          <small>Review customers, admins, and account status.</small>
+        </button>
+        <button class="admin-menu-card" type="button">
+          <span>Showtimes</span>
+          <small>Manage dates, screens, and available seat windows.</small>
+        </button>
+      </div>
+    </section>
   </main>
 
   <dialog id="movieDialog" class="movie-dialog" aria-labelledby="dialogTitle">
     <button class="close-dialog" id="closeDialog" type="button" aria-label="Close movie details">x</button>
     <div id="dialogContent"></div>
+  </dialog>
+
+  <dialog id="authDialog" class="auth-dialog" aria-labelledby="authTitle">
+    <button class="close-dialog" id="closeAuthDialog" type="button" aria-label="Close login and registration form">x</button>
+    <div class="auth-panel">
+      <p class="section-kicker">CINJA Member</p>
+      <h2 id="authTitle">Login</h2>
+
+      <div class="auth-tabs" role="tablist" aria-label="Choose login or registration form">
+        <button class="auth-tab active" type="button" role="tab" aria-selected="true" aria-controls="loginForm" data-auth-tab="login">Login</button>
+        <button class="auth-tab" type="button" role="tab" aria-selected="false" aria-controls="registerForm" data-auth-tab="register">Register</button>
+      </div>
+
+      <form id="loginForm" class="auth-form active" data-auth-form="login">
+        <label for="loginEmail">Email</label>
+        <input id="loginEmail" type="email" placeholder="you@example.com" autocomplete="email" required>
+
+        <label for="loginPassword">Password</label>
+        <input id="loginPassword" type="password" placeholder="Password" autocomplete="current-password" required>
+
+        <button class="primary-button" type="submit">Login</button>
+        <button class="auth-link-button" type="button" data-auth-tab="forgot">Forgot your password?</button>
+      </form>
+
+      <form id="forgotForm" class="auth-form" data-auth-form="forgot" hidden>
+        <label for="forgotEmail">Account Email</label>
+        <input id="forgotEmail" type="email" placeholder="you@example.com" autocomplete="email" required>
+
+        <button class="primary-button" type="submit">Send Reset Link</button>
+        <button class="auth-link-button" type="button" data-auth-tab="reset">I have a reset token</button>
+      </form>
+
+      <form id="resetForm" class="auth-form" data-auth-form="reset" hidden>
+        <label for="resetToken">Reset Token</label>
+        <input id="resetToken" type="text" placeholder="Paste reset token" autocomplete="one-time-code" required>
+
+        <label for="resetPassword">New Password</label>
+        <input id="resetPassword" type="password" placeholder="New password" autocomplete="new-password" minlength="8" pattern="(?=.*[A-Za-z])(?=.*\d).{8,}" title="Use at least 8 characters with a letter and a number." required>
+
+        <button class="primary-button" type="submit">Update Password</button>
+        <button class="auth-link-button" type="button" data-auth-tab="login">Back to Login</button>
+      </form>
+
+      <form id="registerForm" class="auth-form" data-auth-form="register" hidden>
+        <label for="registerFirstName">First Name</label>
+        <input id="registerFirstName" type="text" placeholder="First name" autocomplete="given-name" required>
+
+        <label for="registerLastName">Last Name</label>
+        <input id="registerLastName" type="text" placeholder="Last name" autocomplete="family-name" required>
+
+        <label for="registerEmail">Email</label>
+        <input id="registerEmail" type="email" placeholder="you@example.com" autocomplete="email" required>
+
+        <label for="registerPassword">Password</label>
+        <input id="registerPassword" type="password" placeholder="Create a password" autocomplete="new-password" minlength="8" pattern="(?=.*[A-Za-z])(?=.*\d).{8,}" title="Use at least 8 characters with a letter and a number." required>
+
+        <button class="primary-button" type="submit">Create Account</button>
+      </form>
+
+      <p id="authMessage" class="auth-message" aria-live="polite"></p>
+    </div>
+  </dialog>
+
+  <dialog id="profileDialog" class="auth-dialog" aria-labelledby="profileTitle">
+    <button class="close-dialog" id="closeProfileDialog" type="button" aria-label="Close profile">x</button>
+    <div class="auth-panel">
+      <h2 id="profileTitle" class="profile-title">Your Profile</h2>
+      <div id="profileContent" class="profile-content"></div>
+      <button class="secondary-button profile-action-button" id="editProfileButton" type="button">Edit Profile</button>
+      <button class="secondary-button logout-button" id="logoutButton" type="button">Log Out</button>
+    </div>
   </dialog>
 
   <footer class="site-footer reveal">

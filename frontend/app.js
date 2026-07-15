@@ -37,6 +37,19 @@ const emptyState = document.querySelector("#emptyState");
 const movieDialog = document.querySelector("#movieDialog");
 const dialogContent = document.querySelector("#dialogContent");
 const closeDialog = document.querySelector("#closeDialog");
+const openAuthDialog = document.querySelector("#openAuthDialog");
+const authDialog = document.querySelector("#authDialog");
+const closeAuthDialog = document.querySelector("#closeAuthDialog");
+const authTitle = document.querySelector("#authTitle");
+const authMessage = document.querySelector("#authMessage");
+const profileDialog = document.querySelector("#profileDialog");
+const closeProfileDialog = document.querySelector("#closeProfileDialog");
+const profileContent = document.querySelector("#profileContent");
+const editProfileButton = document.querySelector("#editProfileButton");
+const logoutButton = document.querySelector("#logoutButton");
+const adminPortal = document.querySelector("#admin-portal");
+const adminWelcome = document.querySelector("#adminWelcome");
+const backToCinema = document.querySelector("#backToCinema");
 const siteHeader = document.querySelector(".site-header");
 const scrollProgress = document.querySelector(".scroll-progress");
 
@@ -47,6 +60,10 @@ const scrollProgress = document.querySelector(".scroll-progress");
  * Change this if your Spring Boot route changes.
  ************************************************************/
 const MOVIES_API_URL = "http://localhost:8080/api/movies";
+const AUTH_API_URL = "http://localhost:8080/api/auth";
+const USERS_API_URL = "http://localhost:8080/api/users";
+
+let currentUser = null;
 
 
 /************************************************************
@@ -518,6 +535,513 @@ function openMovieDetails(movie) {
 
 
 /************************************************************
+ * Login and registration modal
+ ************************************************************/
+function setAuthMode(mode) {
+  document.querySelectorAll("[data-auth-tab]").forEach((tab) => {
+    const isActive = tab.dataset.authTab === mode;
+    tab.classList.toggle("active", isActive);
+    tab.setAttribute("aria-selected", String(isActive));
+  });
+
+  document.querySelectorAll("[data-auth-form]").forEach((form) => {
+    const isActive = form.dataset.authForm === mode;
+    form.classList.toggle("active", isActive);
+    form.hidden = !isActive;
+  });
+
+  if (authMessage) {
+    authMessage.textContent = "";
+  }
+
+  if (authTitle) {
+    const titles = {
+      forgot: "Forgot Password",
+      login: "Login",
+      register: "Register",
+      reset: "Reset Password"
+    };
+
+    authTitle.textContent = titles[mode] || "Login";
+  }
+}
+
+
+function openAuthModal() {
+  setAuthMode("login");
+  authDialog.showModal();
+}
+
+
+function updateAuthButtonForUser(user) {
+  const isLoggedIn = Boolean(user);
+
+  openAuthDialog.classList.toggle("logged-in", isLoggedIn);
+  openAuthDialog.setAttribute(
+    "aria-label",
+    isLoggedIn ? "Open profile" : "Open login form"
+  );
+  openAuthDialog.title = isLoggedIn ? "Profile" : "Login";
+}
+
+
+function getAuthErrorMessage(errorBody, fallbackMessage, status) {
+  if (errorBody && typeof errorBody.message === "string") {
+    return errorBody.message;
+  }
+
+  if (status === 401) {
+    return "Invalid email or password. Please try again.";
+  }
+
+  if (status === 403) {
+    return "Login blocked. Please verify your account or contact support.";
+  }
+
+  if (status === 409) {
+    return "An account with this email already exists.";
+  }
+
+  if (status === 400) {
+    return fallbackMessage;
+  }
+
+  if (errorBody && typeof errorBody.error === "string") {
+    return errorBody.error;
+  }
+
+  return fallbackMessage;
+}
+
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+
+async function submitRegistration(form) {
+  const firstName = form.querySelector("#registerFirstName").value.trim();
+  const lastName = form.querySelector("#registerLastName").value.trim();
+
+  if (!firstName || !lastName) {
+    throw new Error("Please enter your first and last name.");
+  }
+
+  const payload = {
+    firstName,
+    lastName,
+    email: form.querySelector("#registerEmail").value,
+    password: form.querySelector("#registerPassword").value,
+    promotions: false
+  };
+
+  const response = await fetch(`${AUTH_API_URL}/register`, {
+    method: "POST",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(payload)
+  });
+
+  const data = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    throw new Error(
+      getAuthErrorMessage(data, "Registration failed. Please check your entries.", response.status)
+    );
+  }
+
+  return data.message || "Account created. Please check your email to verify your account.";
+}
+
+
+async function submitLogin(form) {
+  const payload = {
+    email: form.querySelector("#loginEmail").value,
+    password: form.querySelector("#loginPassword").value
+  };
+
+  const response = await fetch(`${AUTH_API_URL}/login`, {
+    method: "POST",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(payload)
+  });
+
+  const data = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    throw new Error(
+      getAuthErrorMessage(data, "Login failed. Please try again.", response.status)
+    );
+  }
+
+  return data;
+}
+
+
+async function submitForgotPassword(form) {
+  const payload = {
+    email: form.querySelector("#forgotEmail").value
+  };
+
+  const response = await fetch(`${AUTH_API_URL}/forgot-password`, {
+    method: "POST",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(payload)
+  });
+
+  const data = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    throw new Error(
+      getAuthErrorMessage(data, "Could not request password reset. Please try again.", response.status)
+    );
+  }
+
+  return data.message || "If an account exists for that email, a reset link has been sent.";
+}
+
+
+async function submitPasswordReset(form) {
+  const payload = {
+    token: form.querySelector("#resetToken").value.trim(),
+    newPassword: form.querySelector("#resetPassword").value
+  };
+
+  const response = await fetch(`${AUTH_API_URL}/reset-password`, {
+    method: "POST",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(payload)
+  });
+
+  const data = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    throw new Error(
+      getAuthErrorMessage(data, "Could not update password. Please try again.", response.status)
+    );
+  }
+
+  return data.message || "Password has been reset. You can now log in.";
+}
+
+
+async function handleAuthSubmit(event) {
+  event.preventDefault();
+
+  const form = event.target;
+  const mode = form.dataset.authForm;
+  const submitButton = form.querySelector("button[type='submit']");
+
+  if (authMessage) {
+    const loadingMessages = {
+      forgot: "Sending reset link...",
+      login: "Logging you in...",
+      register: "Creating your account...",
+      reset: "Updating your password..."
+    };
+
+    authMessage.textContent = loadingMessages[mode] || "Working...";
+  }
+
+  if (submitButton) {
+    submitButton.disabled = true;
+  }
+
+  try {
+    const submitters = {
+      forgot: submitForgotPassword,
+      login: submitLogin,
+      register: submitRegistration,
+      reset: submitPasswordReset
+    };
+
+    const result = await submitters[mode](form);
+    const message = mode === "login"
+      ? handleSuccessfulLogin(result)
+      : result;
+
+    if (authMessage) {
+      authMessage.textContent = message;
+    }
+
+    form.reset();
+
+    if (mode === "reset") {
+      setAuthMode("login");
+      authMessage.textContent = message;
+    }
+  } catch (error) {
+    if (authMessage) {
+      authMessage.textContent = error.message;
+    }
+  } finally {
+    if (submitButton) {
+      submitButton.disabled = false;
+    }
+  }
+}
+
+
+function showAdminPortal(user) {
+  document.querySelectorAll(".customer-view").forEach((section) => {
+    section.hidden = true;
+  });
+
+  if (adminWelcome) {
+    adminWelcome.textContent = `Signed in as ${user.firstName || "Admin"} ${user.lastName || ""}`.trim();
+  }
+
+  if (adminPortal) {
+    adminPortal.hidden = false;
+    window.location.hash = "#admin-portal";
+    adminPortal.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+}
+
+
+function showCustomerHome(user) {
+  if (adminPortal) {
+    adminPortal.hidden = true;
+  }
+
+  document.querySelectorAll(".customer-view").forEach((section) => {
+    section.hidden = false;
+  });
+
+  window.location.hash = "#top";
+  window.scrollTo({ top: 0, behavior: "smooth" });
+
+  return `Welcome back, ${user.firstName || "CINJA member"}.`;
+}
+
+
+function handleSuccessfulLogin(user) {
+  currentUser = user;
+  updateAuthButtonForUser(user);
+
+  if (authDialog && authDialog.open) {
+    authDialog.close();
+  }
+
+  if (user.role === "ADMIN") {
+    showAdminPortal(user);
+    return `Welcome back, ${user.firstName || "Admin"}. Opening admin portal.`;
+  }
+
+  return showCustomerHome(user);
+}
+
+
+function handleAuthButtonClick() {
+  if (!currentUser) {
+    openAuthModal();
+    return;
+  }
+
+  openProfileModal();
+}
+
+
+async function getCurrentUserProfile() {
+  if (!currentUser?.userId) {
+    return currentUser;
+  }
+
+  const response = await fetch(`${USERS_API_URL}/${currentUser.userId}`);
+  const data = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    throw new Error(
+      getAuthErrorMessage(data, "Could not load profile details.", response.status)
+    );
+  }
+
+  currentUser = { ...currentUser, ...data };
+  return currentUser;
+}
+
+
+function renderProfile(user) {
+  const displayName = `${user.firstName || ""} ${user.lastName || ""}`.trim()
+    || "CINJA Member";
+  const role = user.role || "CUSTOMER";
+
+  profileContent.innerHTML = `
+    <dl class="profile-details">
+      <div>
+        <dt>Name</dt>
+        <dd>${escapeHtml(displayName)}</dd>
+      </div>
+      <div>
+        <dt>Email</dt>
+        <dd>${escapeHtml(user.email || "Not available")}</dd>
+      </div>
+      <div>
+        <dt>Role</dt>
+        <dd>${escapeHtml(role)}</dd>
+      </div>
+    </dl>
+  `;
+
+  editProfileButton.hidden = false;
+}
+
+
+function renderEditProfileForm(user) {
+  profileContent.innerHTML = `
+    <form id="editProfileForm" class="auth-form profile-edit-form">
+      <label for="profileFirstName">First Name</label>
+      <input id="profileFirstName" type="text" value="${escapeHtml(user.firstName || "")}" autocomplete="given-name" required>
+
+      <label for="profileLastName">Last Name</label>
+      <input id="profileLastName" type="text" value="${escapeHtml(user.lastName || "")}" autocomplete="family-name" required>
+
+      <label for="profileEmail">Email</label>
+      <input id="profileEmail" type="email" value="${escapeHtml(user.email || "")}" disabled>
+
+      <div class="profile-edit-actions">
+        <button class="primary-button" type="submit">Save Changes</button>
+        <button class="secondary-button" id="cancelProfileEdit" type="button">Cancel</button>
+      </div>
+    </form>
+    <p id="profileMessage" class="auth-message" aria-live="polite"></p>
+  `;
+
+  editProfileButton.hidden = true;
+}
+
+
+async function saveProfileChanges(event) {
+  event.preventDefault();
+
+  const form = event.target;
+  const profileMessage = document.querySelector("#profileMessage");
+  const submitButton = form.querySelector("button[type='submit']");
+  const payload = {
+    firstName: form.querySelector("#profileFirstName").value.trim(),
+    lastName: form.querySelector("#profileLastName").value.trim()
+  };
+
+  if (!payload.firstName || !payload.lastName) {
+    profileMessage.textContent = "First and last name are required.";
+    return;
+  }
+
+  submitButton.disabled = true;
+  profileMessage.textContent = "Saving profile...";
+
+  try {
+    const response = await fetch(`${USERS_API_URL}/${currentUser.userId}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(payload)
+    });
+
+    const data = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      throw new Error(
+        getAuthErrorMessage(data, "Could not save profile changes.", response.status)
+      );
+    }
+
+    currentUser = { ...currentUser, ...data };
+    renderProfile(currentUser);
+    profileContent.insertAdjacentHTML(
+      "beforeend",
+      `<p class="auth-message">Profile updated successfully.</p>`
+    );
+  } catch (error) {
+    profileMessage.textContent = error.message;
+  } finally {
+    submitButton.disabled = false;
+  }
+}
+
+
+async function openProfileModal() {
+  if (!currentUser) {
+    openAuthModal();
+    return;
+  }
+
+  profileContent.innerHTML = `<p class="auth-message">Loading profile...</p>`;
+  profileDialog.showModal();
+
+  try {
+    const user = await getCurrentUserProfile();
+    renderProfile(user);
+  } catch (error) {
+    renderProfile(currentUser);
+    profileContent.insertAdjacentHTML(
+      "beforeend",
+      `<p class="auth-message">${error.message}</p>`
+    );
+  }
+}
+
+
+function startProfileEdit() {
+  if (!currentUser) {
+    openAuthModal();
+    return;
+  }
+
+  renderEditProfileForm(currentUser);
+}
+
+
+async function logoutCurrentUser() {
+  logoutButton.disabled = true;
+
+  try {
+    const response = await fetch(`${AUTH_API_URL}/logout`, {
+      method: "POST",
+      credentials: "include"
+    });
+
+    const data = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      throw new Error(
+        getAuthErrorMessage(data, "Could not log out. Please try again.", response.status)
+      );
+    }
+
+    currentUser = null;
+    updateAuthButtonForUser(null);
+    profileDialog.close();
+    showCustomerHome({ firstName: "CINJA member" });
+  } catch (error) {
+    profileContent.insertAdjacentHTML(
+      "beforeend",
+      `<p class="auth-message">${error.message}</p>`
+    );
+  } finally {
+    logoutButton.disabled = false;
+  }
+}
+
+
+/************************************************************
  * Booking prototype
  ************************************************************/
 function resetBookingSelections() {
@@ -631,6 +1155,18 @@ function setupSeatSelection() {
 function handleClick(event) {
   const detailsButton = event.target.closest("[data-details]");
   const showtimeButton = event.target.closest("[data-title][data-time]");
+  const authTab = event.target.closest("[data-auth-tab]");
+  const cancelProfileEdit = event.target.closest("#cancelProfileEdit");
+
+  if (cancelProfileEdit) {
+    renderProfile(currentUser);
+    return;
+  }
+
+  if (authTab) {
+    setAuthMode(authTab.dataset.authTab);
+    return;
+  }
 
   if (detailsButton) {
     const detailsTitle = detailsButton.dataset.details;
@@ -742,6 +1278,45 @@ genreFilter.addEventListener("change", renderMovies);
 window.addEventListener("scroll", updateScrollEffects, { passive: true });
 
 document.addEventListener("click", handleClick);
+
+openAuthDialog.addEventListener("click", handleAuthButtonClick);
+
+backToCinema.addEventListener("click", () => {
+  showCustomerHome(currentUser || { firstName: "CINJA member" });
+});
+
+closeAuthDialog.addEventListener("click", () => {
+  authDialog.close();
+});
+
+authDialog.addEventListener("click", (event) => {
+  if (event.target === authDialog) {
+    authDialog.close();
+  }
+});
+
+closeProfileDialog.addEventListener("click", () => {
+  profileDialog.close();
+});
+
+profileDialog.addEventListener("click", (event) => {
+  if (event.target === profileDialog) {
+    profileDialog.close();
+  }
+});
+
+logoutButton.addEventListener("click", logoutCurrentUser);
+editProfileButton.addEventListener("click", startProfileEdit);
+
+profileContent.addEventListener("submit", (event) => {
+  if (event.target.id === "editProfileForm") {
+    saveProfileChanges(event);
+  }
+});
+
+document.querySelectorAll("[data-auth-form]").forEach((form) => {
+  form.addEventListener("submit", handleAuthSubmit);
+});
 
 closeDialog.addEventListener("click", () => {
   movieDialog.close();
