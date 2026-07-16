@@ -54,16 +54,18 @@ const siteHeader = document.querySelector(".site-header");
 const scrollProgress = document.querySelector(".scroll-progress");
 
 
+
 /************************************************************
  * Backend configuration
  * ----------------------------------------------------------
  * Change this if your Spring Boot route changes.
  ************************************************************/
-const MOVIES_API_URL = "http://localhost:8080/api/movies";
-const AUTH_API_URL = "http://localhost:8080/api/auth";
-const USERS_API_URL = "http://localhost:8080/api/users";
+const MOVIES_API_URL = "http://localhost:8081/api/movies";
+const AUTH_API_URL = "http://localhost:8081/api/auth";
+const USERS_API_URL = "http://localhost:8081/api/users";
 
 let currentUser = null;
+let favoriteMovieIds = new Set();
 
 
 /************************************************************
@@ -123,19 +125,15 @@ function normalizeMovieStatus(status) {
     return "Coming Soon";
   }
 
-  // Fallback: return whatever the backend sent.
-  // This helps you notice unexpected statuses in the UI/console.
   return status;
 }
 
 
 function normalizeShowtimes(showtimes) {
-  // MongoDB currently sends showtimes as an array, which is ideal.
   if (Array.isArray(showtimes) && showtimes.length > 0) {
     return showtimes;
   }
 
-  // This also supports a comma-separated string just in case.
   if (typeof showtimes === "string" && showtimes.trim()) {
     return showtimes.split(",").map((time) => time.trim());
   }
@@ -143,32 +141,26 @@ function normalizeShowtimes(showtimes) {
   return ["Coming Soon"];
 }
 
-
 function normalizeTrailerUrl(trailerUrl) {
   if (!trailerUrl) {
     return "";
   }
 
-  // If someone stores a normal YouTube watch URL, convert it to embed format.
   if (trailerUrl.includes("youtube.com/watch?v=")) {
     return trailerUrl.replace("watch?v=", "embed/");
   }
 
-  // If someone stores a short youtu.be URL, convert it to embed format.
   if (trailerUrl.includes("youtu.be/")) {
     const videoId = trailerUrl.split("youtu.be/")[1].split("?")[0];
     return `https://www.youtube.com/embed/${videoId}`;
   }
 
-  // Your current MongoDB trailerUrl is already an embed URL,
-  // so this will just return it unchanged.
   return trailerUrl;
 }
 
-
 function normalizeMovieFromBackend(movie) {
   return {
-    id: movie.id || movie._id,
+    id: movie.id || movie._id?.$oid || movie._id || movie.movieId,
     title: movie.title || "Untitled Movie",
     genre: movie.genre || "Unknown",
     rating: movie.rating || "NR",
@@ -176,9 +168,6 @@ function normalizeMovieFromBackend(movie) {
     runtime: movie.runtime || "Runtime TBD",
     showtimes: normalizeShowtimes(movie.showtimes),
     description: movie.description || "No description available.",
-
-    // MongoDB uses posterUrl/trailerUrl.
-    // The frontend uses poster/trailer internally.
     poster: movie.posterUrl || movie.poster || movie.imageUrl || "",
     trailer: normalizeTrailerUrl(movie.trailerUrl || movie.trailer || "")
   };
@@ -193,7 +182,10 @@ function normalizeMovieFromBackend(movie) {
  ************************************************************/
 async function fetchMoviesFromBackend() {
   try {
-    showLoadingMessage();
+    if (emptyState) {
+      emptyState.hidden = false;
+      emptyState.textContent = "Loading movies from database...";
+    }
 
     const response = await fetch(MOVIES_API_URL);
 
@@ -224,7 +216,7 @@ async function fetchMoviesFromBackend() {
     if (emptyState) {
       emptyState.hidden = false;
       emptyState.textContent =
-        "Could not load movies from the backend. Make sure Spring Boot is running and /api/movies returns JSON.";
+        "Could not load movies from the backend. Check the backend server and movie API.";
     }
   }
 }
@@ -238,6 +230,147 @@ function showLoadingMessage() {
     emptyState.hidden = false;
     emptyState.textContent = "Loading movies from Cinema Ninja database...";
   }
+}
+
+function getCurrentUserId() {
+  return (
+    currentUser?.userId ||
+    currentUser?.id ||
+    currentUser?._id?.$oid ||
+    currentUser?._id ||
+    ""
+  );
+}
+
+function getMovieId(movie) {
+  return (
+    movie?.id ||
+    movie?._id?.$oid ||
+    movie?._id ||
+    movie?.movieId ||
+    ""
+  );
+}
+
+async function apiRequest(url, options = {}) {
+  const response = await fetch(url, {
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...(options.headers || {})
+    }
+  });
+
+  const data = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    throw new Error(
+      data.message ||
+      data.error ||
+      `Request failed with status ${response.status}`
+    );
+  }
+
+  return data;
+}
+
+function normalizeProfileResponse(profile) {
+  return {
+    ...profile,
+    id: profile.id || profile.userId || profile._id?.$oid || profile._id,
+    address: profile.address || null,
+    cards: profile.cards || profile.paymentCards || [],
+    favorites: profile.favorites || profile.favoriteMovies || []
+  };
+}
+
+async function loadFullUserProfile() {
+  const userId = getCurrentUserId();
+
+  if (!userId) {
+    throw new Error("No logged-in user found.");
+  }
+
+  const profile = await apiRequest(`${USERS_API_URL}/${userId}`);
+  const cards = await apiRequest(`${USERS_API_URL}/${userId}/cards`);
+  const favorites = await apiRequest(`${USERS_API_URL}/${userId}/favorites`);
+
+  currentUser = normalizeProfileResponse({
+    ...currentUser,
+    ...profile,
+    cards,
+    favorites
+  });
+
+  favoriteMovieIds = new Set(
+    favorites.map((movie) => String(getMovieId(movie))).filter(Boolean)
+  );
+
+  renderMovies();
+
+  return currentUser;
+}
+
+function getCardDisplayNumber(card) {
+  return (
+    card.maskedCardNumber ||
+    card.lastFour ||
+    card.cardLastFour ||
+    "••••"
+  );
+}
+
+function renderPaymentCards(cards) {
+  if (!cards || cards.length === 0) {
+    return `<p class="profile-muted">No payment cards saved yet.</p>`;
+  }
+
+  return `
+    <div class="credit-card-grid">
+      ${cards
+        .map((card, index) => {
+          const cardId = card.id || card.cardId || card._id?.$oid || card._id;
+          const displayNumber = getCardDisplayNumber(card);
+          const formattedNumber = displayNumber.includes("•")
+            ? displayNumber
+            : `•••• •••• •••• ${displayNumber}`;
+
+          return `
+            <article class="saved-credit-card">
+              <div class="credit-card-topline">
+                <span class="credit-card-brand">CINJA CARD</span>
+                <span class="credit-card-chip"></span>
+              </div>
+
+              <div class="credit-card-number">
+                ${escapeHtml(formattedNumber)}
+              </div>
+
+              <div class="credit-card-bottom">
+                <div>
+                  <span class="credit-card-label">Cardholder</span>
+                  <strong>${escapeHtml(card.cardholderName || "Cardholder")}</strong>
+                </div>
+
+                <div>
+                  <span class="credit-card-label">Expires</span>
+                  <strong>${escapeHtml(card.expirationDate || "N/A")}</strong>
+                </div>
+              </div>
+
+              <button
+                class="credit-card-remove"
+                type="button"
+                data-delete-card-id="${escapeHtml(String(cardId || ""))}"
+              >
+                Remove
+              </button>
+            </article>
+          `;
+        })
+        .join("")}
+    </div>
+  `;
 }
 
 
@@ -414,10 +547,23 @@ function movieCard(movie) {
 
   const posterUrl = movie.poster || fallbackPoster;
 
+  const movieId = getMovieId(movie);
+  const isFavorite = favoriteMovieIds.has(String(movieId));
+
   article.style.setProperty("--poster", `url('${posterUrl}')`);
 
   article.innerHTML = `
     <span class="status-pill">${movie.status}</span>
+
+    <button
+      class="favorite-button ${isFavorite ? "active" : ""}"
+      type="button"
+      data-favorite-movie-id="${movieId}"
+      title="${isFavorite ? "Remove from favorites" : "Add to favorites"}"
+      aria-label="${isFavorite ? "Remove from favorites" : "Add to favorites"}"
+    >
+      ${isFavorite ? "♥" : "♡"}
+    </button>
 
     <h3>${movie.title}</h3>
 
@@ -833,7 +979,12 @@ function showCustomerHome(user) {
 
 function handleSuccessfulLogin(user) {
   currentUser = user;
+  updateNavbarGreeting(currentUser);
   updateAuthButtonForUser(user);
+
+  loadFullUserProfile().catch((error) => {
+    console.error("Could not load full user profile:", error);
+  });
 
   if (authDialog && authDialog.open) {
     authDialog.close();
@@ -859,44 +1010,120 @@ function handleAuthButtonClick() {
 
 
 async function getCurrentUserProfile() {
-  if (!currentUser?.userId) {
+  if (!getCurrentUserId()) {
     return currentUser;
   }
 
-  const response = await fetch(`${USERS_API_URL}/${currentUser.userId}`);
-  const data = await response.json().catch(() => ({}));
-
-  if (!response.ok) {
-    throw new Error(
-      getAuthErrorMessage(data, "Could not load profile details.", response.status)
-    );
-  }
-
-  currentUser = { ...currentUser, ...data };
-  return currentUser;
+  return loadFullUserProfile();
 }
 
 
 function renderProfile(user) {
-  const displayName = `${user.firstName || ""} ${user.lastName || ""}`.trim()
-    || "CINJA Member";
+  const displayName =
+    `${user.firstName || ""} ${user.lastName || ""}`.trim() || "CINJA Member";
+
   const role = user.role || "CUSTOMER";
+  const address = user.address;
+  const cards = user.cards || [];
+  const favorites = user.favorites || [];
 
   profileContent.innerHTML = `
-    <dl class="profile-details">
-      <div>
-        <dt>Name</dt>
-        <dd>${escapeHtml(displayName)}</dd>
+    <section class="profile-section">
+      <h3>Account Information</h3>
+
+      <dl class="profile-details">
+        <div>
+          <dt>Name</dt>
+          <dd>${escapeHtml(displayName)}</dd>
+        </div>
+
+        <div>
+          <dt>Email</dt>
+          <dd>${escapeHtml(user.email || "Not available")}</dd>
+        </div>
+
+        <div>
+          <dt>Role</dt>
+          <dd>${escapeHtml(role)}</dd>
+        </div>
+      </dl>
+    </section>
+
+    <section class="profile-section">
+      <div class="profile-section-header">
+        <h3>Address</h3>
+        <button class="secondary-button small-profile-button" type="button" data-profile-action="edit-address">
+          ${address ? "Edit Address" : "Add Address"}
+        </button>
       </div>
-      <div>
-        <dt>Email</dt>
-        <dd>${escapeHtml(user.email || "Not available")}</dd>
+
+      ${
+        address
+          ? `
+            <div class="profile-card">
+              <p>${escapeHtml(address.street || "")}</p>
+              <p>
+                ${escapeHtml(address.city || "")},
+                ${escapeHtml(address.state || "")}
+                ${escapeHtml(address.zipCode || "")}
+              </p>
+            </div>
+          `
+          : `<p class="profile-muted">No address saved yet.</p>`
+      }
+    </section>
+
+    <section class="profile-section">
+      <div class="profile-section-header">
+        <h3>Payment Cards</h3>
+        ${
+          cards.length < 3
+            ? `
+              <button class="secondary-button small-profile-button" type="button" data-profile-action="add-card">
+                Add Card
+              </button>
+            `
+            : `<span class="profile-limit-note">Card limit reached: 3/3</span>`
+        }
       </div>
-      <div>
-        <dt>Role</dt>
-        <dd>${escapeHtml(role)}</dd>
-      </div>
-    </dl>
+
+      ${renderPaymentCards(cards)}
+    </section>
+
+    <section class="profile-section">
+      <h3>Favorite Movies</h3>
+
+      ${
+        favorites.length > 0
+          ? `
+            <div class="favorite-list">
+              ${favorites
+                .map((movie) => {
+                  const movieId = getMovieId(movie);
+
+                  return `
+                    <div class="profile-card profile-card-row">
+                      <div>
+                        <strong>${escapeHtml(movie.title || "Untitled Movie")}</strong>
+                        <p>${escapeHtml(movie.genre || "Movie")}</p>
+                      </div>
+
+                      <button
+                        class="danger-button"
+                        type="button"
+                        data-remove-favorite-id="${escapeHtml(String(movieId || ""))}"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  `;
+                })
+                .join("")}
+            </div>
+          `
+          : `<p class="profile-muted">No favorite movies yet. Use the heart button while browsing movies.</p>`
+      }
+    </section>
   `;
 
   editProfileButton.hidden = false;
@@ -926,6 +1153,304 @@ function renderEditProfileForm(user) {
   editProfileButton.hidden = true;
 }
 
+function updateNavbarGreeting(user) {
+  let greeting = document.querySelector("#navbarGreeting");
+
+  if (!greeting) {
+    greeting = document.createElement("span");
+    greeting.id = "navbarGreeting";
+    greeting.className = "navbar-greeting";
+
+    const header = document.querySelector(".site-header");
+    const rightSideButton =
+      document.querySelector("#authButton") ||
+      document.querySelector("#profileButton") ||
+      document.querySelector(".ghost-button");
+
+    if (header && rightSideButton) {
+      header.insertBefore(greeting, rightSideButton);
+    } else if (header) {
+      header.appendChild(greeting);
+    }
+  }
+
+  if (!user) {
+    greeting.hidden = true;
+    greeting.textContent = "";
+    return;
+  }
+
+  const firstName = user.firstName || user.name?.split(" ")[0] || "there";
+
+  greeting.hidden = false;
+  greeting.textContent = `Hello, ${firstName}`;
+}
+
+function renderAddressForm(user) {
+  const address = user.address || {};
+
+  profileContent.innerHTML = `
+    <form id="addressForm" class="auth-form profile-edit-form">
+      <h3>Address</h3>
+
+      <label for="addressStreet">Street <span class="required">*</span></label>
+      <input id="addressStreet" type="text" value="${escapeHtml(address.street || "")}" required>
+
+      <label for="addressCity">City <span class="required">*</span></label>
+      <input id="addressCity" type="text" value="${escapeHtml(address.city || "")}" required>
+
+      <label for="addressState">State <span class="required">*</span></label>
+      <input id="addressState" type="text" value="${escapeHtml(address.state || "")}" required>
+
+      <label for="addressZipCode">ZIP Code <span class="required">*</span></label>
+      <input id="addressZipCode" type="text" value="${escapeHtml(address.zipCode || "")}" required>
+
+      <div class="profile-edit-actions">
+        <button class="primary-button" type="submit">Save Address</button>
+        <button class="secondary-button" type="button" data-profile-action="cancel-profile-panel">Cancel</button>
+      </div>
+
+      <p id="profileMessage" class="auth-message" aria-live="polite"></p>
+    </form>
+  `;
+
+  editProfileButton.hidden = true;
+}
+
+function renderCardForm() {
+  profileContent.innerHTML = `
+    <form id="cardForm" class="auth-form profile-edit-form">
+      <h3>Add Payment Card</h3>
+
+      <label for="cardholderName">Cardholder Name <span class="required">*</span></label>
+      <input id="cardholderName" type="text" autocomplete="cc-name" required>
+
+      <label for="cardNumber">Card Number <span class="required">*</span></label>
+      <input id="cardNumber" type="text" inputmode="numeric" autocomplete="cc-number" placeholder="1234123412341234" required>
+
+      <label for="expirationDate">Expiration Date <span class="required">*</span></label>
+      <input id="expirationDate" type="text" autocomplete="cc-exp" placeholder="MM/YY" required>
+
+      <div class="profile-edit-actions">
+        <button class="primary-button" type="submit">Save Card</button>
+        <button class="secondary-button" type="button" data-profile-action="cancel-profile-panel">Cancel</button>
+      </div>
+
+      <p id="profileMessage" class="auth-message" aria-live="polite"></p>
+    </form>
+  `;
+
+  editProfileButton.hidden = true;
+}
+
+async function saveAddress(event) {
+  event.preventDefault();
+
+  const userId = getCurrentUserId();
+  const form = event.target;
+  const profileMessage = document.querySelector("#profileMessage");
+
+  const payload = {
+    street: form.querySelector("#addressStreet").value.trim(),
+    city: form.querySelector("#addressCity").value.trim(),
+    state: form.querySelector("#addressState").value.trim(),
+    zipCode: form.querySelector("#addressZipCode").value.trim()
+  };
+
+  if (!payload.street || !payload.city || !payload.state || !payload.zipCode) {
+    profileMessage.textContent = "All address fields are required.";
+    return;
+  }
+
+  try {
+    profileMessage.textContent = "Saving address...";
+
+    await apiRequest(`${USERS_API_URL}/${userId}/address`, {
+      method: "PUT",
+      body: JSON.stringify(payload)
+    });
+
+    await loadFullUserProfile();
+    renderProfile(currentUser);
+
+    profileContent.insertAdjacentHTML(
+      "beforeend",
+      `<p class="auth-message">Address saved successfully.</p>`
+    );
+  } catch (error) {
+    profileMessage.textContent = error.message;
+  }
+}
+
+async function saveCard(event) {
+  event.preventDefault();
+
+  const userId = getCurrentUserId();
+  const form = event.target;
+  const profileMessage = document.querySelector("#profileMessage");
+
+  const payload = {
+    cardholderName: form.querySelector("#cardholderName").value.trim(),
+    cardNumber: form.querySelector("#cardNumber").value.trim(),
+    expirationDate: form.querySelector("#expirationDate").value.trim()
+  };
+
+  if (!payload.cardholderName || !payload.cardNumber || !payload.expirationDate) {
+    profileMessage.textContent = "All card fields are required.";
+    return;
+  }
+
+  if ((currentUser.cards || []).length >= 3) {
+    profileMessage.textContent = "You can only store up to 3 payment cards.";
+    return;
+  }
+
+  try {
+    profileMessage.textContent = "Saving payment card...";
+
+    await apiRequest(`${USERS_API_URL}/${userId}/cards`, {
+      method: "POST",
+      body: JSON.stringify(payload)
+    });
+
+    await loadFullUserProfile();
+    renderProfile(currentUser);
+
+    profileContent.insertAdjacentHTML(
+      "beforeend",
+      `<p class="auth-message">Payment card saved successfully.</p>`
+    );
+  } catch (error) {
+    profileMessage.textContent = error.message;
+  }
+}
+
+async function deleteCard(cardId) {
+  const userId = getCurrentUserId();
+
+  if (!cardId) {
+    return;
+  }
+
+  try {
+    await apiRequest(`${USERS_API_URL}/${userId}/cards/${cardId}`, {
+      method: "DELETE"
+    });
+
+    await loadFullUserProfile();
+    renderProfile(currentUser);
+  } catch (error) {
+    profileContent.insertAdjacentHTML(
+      "beforeend",
+      `<p class="auth-message">${escapeHtml(error.message)}</p>`
+    );
+  }
+}
+
+function setFavoriteButtonState(button, isFavorite) {
+  if (!button) {
+    return;
+  }
+
+  button.classList.toggle("active", isFavorite);
+  button.textContent = isFavorite ? "♥" : "♡";
+  button.title = isFavorite ? "Remove from favorites" : "Add to favorites";
+  button.setAttribute(
+    "aria-label",
+    isFavorite ? "Remove from favorites" : "Add to favorites"
+  );
+}
+
+async function addFavoriteMovie(movieId, button) {
+  const userId = getCurrentUserId();
+
+  if (!currentUser || !userId) {
+    openAuthModal();
+    return;
+  }
+
+  if (!movieId) {
+    return;
+  }
+
+  // Optimistic UI update: update the heart immediately.
+  favoriteMovieIds.add(String(movieId));
+  setFavoriteButtonState(button, true);
+
+  try {
+    await apiRequest(`${USERS_API_URL}/${userId}/favorites`, {
+      method: "POST",
+      body: JSON.stringify({ movieId })
+    });
+
+    // Keep currentUser.favorites locally updated without refreshing the whole movie grid.
+    const movie = movies.find((item) => String(getMovieId(item)) === String(movieId));
+
+    if (movie) {
+      currentUser.favorites = currentUser.favorites || [];
+
+      const alreadyStored = currentUser.favorites.some(
+        (favorite) => String(getMovieId(favorite)) === String(movieId)
+      );
+
+      if (!alreadyStored) {
+        currentUser.favorites.push(movie);
+      }
+    }
+  } catch (error) {
+    // Revert UI if backend fails.
+    favoriteMovieIds.delete(String(movieId));
+    setFavoriteButtonState(button, false);
+    throw error;
+  }
+}
+
+async function removeFavoriteMovie(movieId, button) {
+  const userId = getCurrentUserId();
+
+  if (!currentUser || !userId || !movieId) {
+    return;
+  }
+
+  // Optimistic UI update: update the heart immediately.
+  favoriteMovieIds.delete(String(movieId));
+  setFavoriteButtonState(button, false);
+
+  try {
+    await apiRequest(`${USERS_API_URL}/${userId}/favorites/${movieId}`, {
+      method: "DELETE"
+    });
+
+    // Keep currentUser.favorites locally updated without refreshing the whole movie grid.
+    currentUser.favorites = (currentUser.favorites || []).filter(
+      (favorite) => String(getMovieId(favorite)) !== String(movieId)
+    );
+  } catch (error) {
+    // Revert UI if backend fails.
+    favoriteMovieIds.add(String(movieId));
+    setFavoriteButtonState(button, true);
+    throw error;
+  }
+}
+
+async function toggleFavoriteMovie(movieId, button) {
+  try {
+    const isAlreadyFavorite = favoriteMovieIds.has(String(movieId));
+
+    if (isAlreadyFavorite) {
+      await removeFavoriteMovie(movieId, button);
+    } else {
+      await addFavoriteMovie(movieId, button);
+    }
+
+    // Important:
+    // Do NOT call renderMovies() here.
+    // That was causing the movie cards to refresh/reanimate.
+  } catch (error) {
+    console.error("Favorite movie error:", error);
+    alert(error.message || "Could not update favorite movie.");
+  }
+}
 
 async function saveProfileChanges(event) {
   event.preventDefault();
@@ -1027,6 +1552,7 @@ async function logoutCurrentUser() {
     }
 
     currentUser = null;
+    updateNavbarGreeting(null);
     updateAuthButtonForUser(null);
     profileDialog.close();
     showCustomerHome({ firstName: "CINJA member" });
@@ -1153,10 +1679,57 @@ function setupSeatSelection() {
  * - Showtime buttons
  ************************************************************/
 function handleClick(event) {
+  const favoriteButton = event.target.closest("[data-favorite-movie-id]");
+  const editAddressButton = event.target.closest("[data-profile-action='edit-address']");
+  const addCardButton = event.target.closest("[data-profile-action='add-card']");
+  const cancelProfilePanelButton = event.target.closest("[data-profile-action='cancel-profile-panel']");
+  const deleteCardButton = event.target.closest("[data-delete-card-id]");
+  const removeFavoriteButton = event.target.closest("[data-remove-favorite-id]");
   const detailsButton = event.target.closest("[data-details]");
   const showtimeButton = event.target.closest("[data-title][data-time]");
   const authTab = event.target.closest("[data-auth-tab]");
   const cancelProfileEdit = event.target.closest("#cancelProfileEdit");
+  
+  if (favoriteButton) {
+  toggleFavoriteMovie(
+    favoriteButton.dataset.favoriteMovieId,
+    favoriteButton
+  );
+  return;
+}
+
+  if (editAddressButton) {
+    renderAddressForm(currentUser);
+    return;
+  }
+
+  if (addCardButton) {
+    renderCardForm();
+    return;
+  }
+
+  if (cancelProfilePanelButton) {
+    renderProfile(currentUser);
+    return;
+  }
+
+  if (deleteCardButton) {
+    deleteCard(deleteCardButton.dataset.deleteCardId);
+    return;
+  }
+
+  if (removeFavoriteButton) {
+    removeFavoriteMovie(removeFavoriteButton.dataset.removeFavoriteId)
+      .then(() => renderProfile(currentUser))
+      .catch((error) => {
+        profileContent.insertAdjacentHTML(
+          "beforeend",
+          `<p class="auth-message">${escapeHtml(error.message)}</p>`
+        );
+      });
+
+    return;
+  }
 
   if (cancelProfileEdit) {
     renderProfile(currentUser);
@@ -1309,10 +1882,18 @@ logoutButton.addEventListener("click", logoutCurrentUser);
 editProfileButton.addEventListener("click", startProfileEdit);
 
 profileContent.addEventListener("submit", (event) => {
-  if (event.target.id === "editProfileForm") {
-    saveProfileChanges(event);
-  }
-});
+    if (event.target.id === "editProfileForm") {
+      saveProfileChanges(event);
+    }
+
+    if (event.target.id === "addressForm") {
+      saveAddress(event);
+    }
+
+    if (event.target.id === "cardForm") {
+      saveCard(event);
+    }
+  });
 
 document.querySelectorAll("[data-auth-form]").forEach((form) => {
   form.addEventListener("submit", handleAuthSubmit);
