@@ -26,7 +26,7 @@ public class Movie {
 
 
     private String status;      // RUNNING or COMING_SOON
-    private List<String> showtimes;
+    private List<String> showtime;
 
 
     private List<Favorite> favorites;
@@ -45,7 +45,7 @@ public class Movie {
         this.posterUrl = posterUrl;
         this.trailerUrl = trailerUrl;
         this.status = status;
-        this.showtimes = showtimes;
+        this.showtime = showtimes;
 
 
     } //end constructor
@@ -147,12 +147,12 @@ public class Movie {
 
 
     public List<String> getShowtimes() {
-        return showtimes;
+        return showtime;
     }
 
 
     public void setShowtimes(List<String> showtimes) {
-        this.showtimes = showtimes;
+        this.showtime = showtimes;
     }
 
 
