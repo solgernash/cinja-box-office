@@ -2,6 +2,8 @@ package com.cinema.model;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
+import java.util.List;
+
 @Document(collection = "paymentCards")
 public class PaymentCard {
     @Id
@@ -11,6 +13,7 @@ public class PaymentCard {
 
     private Address address;
     private Customer customer;
+    private List<Booking> bookings;
 
      public PaymentCard() {
 
@@ -71,4 +74,11 @@ public class PaymentCard {
         this.customer = customer;
     }
 
-}
+    public List<Booking> getBookings() {
+        return bookings;
+    }
+
+    public void setBookings(List<Booking> bookings) {
+        this.bookings = bookings;
+    }
+} //end class

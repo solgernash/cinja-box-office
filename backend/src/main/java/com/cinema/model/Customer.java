@@ -9,6 +9,9 @@ public class Customer extends User {
 
     private List<PaymentCard> paymentCards;
     private Address address;
+    private List<Favorite> favorites;
+    private List<Booking> bookings;
+    private List<Recommendation> recommendations;
 
     public Customer() {
         super();
@@ -51,4 +54,29 @@ public class Customer extends User {
     public void setAddress(Address address) {
         this.address = address;
     }
-}
+
+
+    public List<Favorite> getFavorites() {
+        return favorites;
+    }
+
+    public void setFavorites(List<Favorite> favorites) {
+        this.favorites = favorites;
+    }
+
+    public List<Booking> getBookings() {
+        return bookings;
+    }
+
+    public void setBookings(List<Booking> bookings) {
+        this.bookings = bookings;
+    }
+
+    public List<Recommendation> getRecommendations() {
+        return recommendations;
+    }
+
+    public void setRecommendations(List<Recommendation> recommendations) {
+        this.recommendations = recommendations;
+    }
+} //end class

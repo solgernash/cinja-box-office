@@ -1,4 +1,5 @@
 package com.cinema.model;
+import java.util.Date;
 import java.util.List;
 
 
@@ -15,8 +16,9 @@ public class Movie {
     private String id;
     private String title;
     private String runtime;
-    private String genre;
-    private String rating;
+    private MovieGenre genre;
+    private Double rating;
+    private String ageRating;
     private String description;
 
     @JsonProperty("poster")
@@ -26,28 +28,39 @@ public class Movie {
 
 
     private String status;      // RUNNING or COMING_SOON
-    private List<String> showtime;
+
+
+    private String cast;
+    private String director;
+    private String producer;
+    private String synopsis;
+    private Date releaseDate;
 
 
     private List<Favorite> favorites;
+    private List<Recommendation> recommendations;
+    private List<Show> shows;
 
     public Movie() {
 
     } //default constructor
 
-    public Movie(String id, String title, String runtime, String genre, String rating, String description, String posterUrl,  String trailerUrl, String status, List<String> showtimes) {
+    public Movie(String id, String title, String runtime, MovieGenre genre, Double rating, String ageRating, String description, String posterUrl,  String trailerUrl, String status, String cast, String director, String producer, String synopsis, Date releaseDate) {
         this.id = id;
         this.title = title;
         this.runtime = runtime;
         this.genre = genre;
         this.rating = rating;
+        this.ageRating = ageRating;
         this.description = description;
         this.posterUrl = posterUrl;
         this.trailerUrl = trailerUrl;
         this.status = status;
-        this.showtime = showtimes;
-
-
+        this.cast = cast;
+        this.director = director;
+        this.producer = producer;
+        this.synopsis = synopsis;
+        this.releaseDate = releaseDate;
     } //end constructor
 
 
@@ -59,17 +72,6 @@ public class Movie {
 
     //----------getters and setters----------//
 
-
-
-
-    public String getGenre() {
-        return genre;
-    }
-
-
-    public void setGenre(String genre) {
-        this.genre = genre;
-    }
 
 
 
@@ -94,12 +96,12 @@ public class Movie {
     }
 
 
-    public String getRating() {
+    public Double getRating() {
         return rating;
     }
 
 
-    public void setRating(String rating) {
+    public void setRating(Double rating) {
         this.rating = rating;
     }
 
@@ -146,14 +148,7 @@ public class Movie {
 
 
 
-    public List<String> getShowtimes() {
-        return showtime;
-    }
 
-
-    public void setShowtimes(List<String> showtimes) {
-        this.showtime = showtimes;
-    }
 
 
     public String getRuntime() {
@@ -171,5 +166,80 @@ public class Movie {
 
     public void setFavorites(List<Favorite> favorites) {
         this.favorites = favorites;
+    }
+
+
+
+    public List<Recommendation> getRecommendations() {
+        return recommendations;
+    }
+
+    public void setRecommendations(List<Recommendation> recommendations) {
+        this.recommendations = recommendations;
+    }
+
+    public List<Show> getShows() {
+        return shows;
+    }
+
+    public void setShows(List<Show> shows) {
+        this.shows = shows;
+    }
+
+
+    public String getCast() {
+        return cast;
+    }
+
+    public void setCast(String cast) {
+        this.cast = cast;
+    }
+
+    public String getDirector() {
+        return director;
+    }
+
+    public void setDirector(String director) {
+        this.director = director;
+    }
+
+    public String getProducer() {
+        return producer;
+    }
+
+    public void setProducer(String producer) {
+        this.producer = producer;
+    }
+
+    public String getSynopsis() {
+        return synopsis;
+    }
+
+    public void setSynopsis(String synopsis) {
+        this.synopsis = synopsis;
+    }
+
+    public Date getReleaseDate() {
+        return releaseDate;
+    }
+
+    public void setReleaseDate(Date releaseDate) {
+        this.releaseDate = releaseDate;
+    }
+
+    public MovieGenre getGenre() {
+        return genre;
+    }
+
+    public void setGenre(MovieGenre genre) {
+        this.genre = genre;
+    }
+
+    public String getAgeRating() {
+        return ageRating;
+    }
+
+    public void setAgeRating(String ageRating) {
+        this.ageRating = ageRating;
     }
 }  //end class
