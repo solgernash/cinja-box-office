@@ -13,9 +13,9 @@ public class Show {
     private String showId;
 
      private Movie movie;
-     private List<Booking> booking;
+     private List<Booking> bookings;
      private Showroom showroom;
-     private Ticket ticket;
+    private List<Ticket> tickets;
 
      private Date showDate;
      private Time showTime;
@@ -60,12 +60,12 @@ public class Show {
         this.movie = movie;
     }
 
-    public List<Booking> getBooking() {
-        return booking;
+    public List<Booking> getBookings() {
+        return bookings;
     }
 
-    public void setBooking(List<Booking> booking) {
-        this.booking = booking;
+    public void setBookings(List<Booking> booking) {
+        this.bookings = booking;
     }
 
     public Showroom getShowroom() {
@@ -76,13 +76,6 @@ public class Show {
         this.showroom = showroom;
     }
 
-    public Ticket getTicket() {
-        return ticket;
-    }
-
-    public void setTicket(Ticket ticket) {
-        this.ticket = ticket;
-    }
 
     public Time getShowTime() {
         return showTime;
@@ -98,5 +91,13 @@ public class Show {
 
     public void setShowDuration(int showDuration) {
         this.showDuration = showDuration;
+    }
+
+    public List<Ticket> getTickets() {
+        return tickets;
+    }
+
+    public void setTickets(List<Ticket> tickets) {
+        this.tickets = tickets;
     }
 } //end class

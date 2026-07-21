@@ -50,11 +50,11 @@ public class Theatre {
         this.theatreLocation = theatreLocation;
     }
 
-    public List<Showroom> getShowroom() {
+    public List<Showroom> getShowrooms() {
         return showrooms;
     }
 
-    public void setShowroom(List<Showroom> showroom) {
-        this.showrooms = showroom;
+    public void setShowrooms(List<Showroom> showrooms) {
+        this.showrooms = showrooms;
     }
 } //end class
