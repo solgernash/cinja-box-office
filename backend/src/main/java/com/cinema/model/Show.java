@@ -16,6 +16,7 @@ public class Show {
      private List<Booking> bookings;
      private Showroom showroom;
     private List<Ticket> tickets;
+    private List<ShowSeat> showSeats;
 
      private Date showDate;
      private Time showTime;
@@ -100,4 +101,14 @@ public class Show {
     public void setTickets(List<Ticket> tickets) {
         this.tickets = tickets;
     }
+
+
+    public List<ShowSeat> getShowSeats() {
+        return showSeats;
+    }
+
+    public void setShowSeats(List<ShowSeat> showSeats) {
+        this.showSeats = showSeats;
+    }
+
 } //end class

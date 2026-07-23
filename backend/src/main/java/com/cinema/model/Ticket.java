@@ -3,6 +3,8 @@ package com.cinema.model;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
+import java.util.List;
+
 @Document(collection = "tickets")
 public class Ticket {
     @Id
@@ -13,6 +15,7 @@ public class Ticket {
     private Booking booking;
     private Seat seat;
     private Show show;
+    private ShowSeat showSeat;
 
     public Ticket() {
 
@@ -71,5 +74,13 @@ public class Ticket {
 
     public void setShow(Show show) {
         this.show = show;
+    }
+
+    public ShowSeat getShowSeat() {
+        return showSeat;
+    }
+
+    public void setShowSeat(ShowSeat showSeat) {
+        this.showSeat = showSeat;
     }
 } //end class
