@@ -1347,6 +1347,11 @@ async function deleteCard(cardId) {
   }
 }
 
+function clearAuthenticatedSession() {
+  favoriteMovieIds = new Set();
+  renderMovies();
+}
+
 function setFavoriteButtonState(button, isFavorite) {
   if (!button) {
     return;
@@ -1552,10 +1557,12 @@ async function logoutCurrentUser() {
     }
 
     currentUser = null;
+    clearAuthenticatedSession();
     updateNavbarGreeting(null);
     updateAuthButtonForUser(null);
     profileDialog.close();
     showCustomerHome({ firstName: "CINJA member" });
+
   } catch (error) {
     profileContent.insertAdjacentHTML(
       "beforeend",
