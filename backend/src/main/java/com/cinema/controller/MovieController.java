@@ -6,6 +6,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -28,6 +30,12 @@ public class MovieController {
     @GetMapping
     public List<Movie> getAllMovies() {
         return movieService.getAllMovies();
+    }
+
+    // POST /api/movies -> admin adds a new movie
+    @PostMapping
+    public Movie createMovie(@RequestBody Movie movie) {
+        return movieService.createMovie(movie);
     }
 
     // GET /api/movies/{id} -> one movie's full details;

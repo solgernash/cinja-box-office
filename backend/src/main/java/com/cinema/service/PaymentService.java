@@ -1,8 +1,18 @@
 package com.cinema.service;
 
+import com.cinema.model.PaymentCard;
+import org.springframework.stereotype.Service;
+
+/*
+ * Simulated payment processing. Sprint 3 only shows a payment-page mockup, so
+ * this is a placeholder that always "succeeds"; real payment processing is a
+ * later deliverable (and would be orchestrated by the CheckoutFacade).
+ */
+@Service
 public class PaymentService {
 
-    //CheckoutFacade.java design pattern already implemented, PaymentService should implement the payment transaction logic that CheckoutFacade will call
-    //simple simulated payment method that returns success/failure I believe is enough for sprint 3/final demo.
-
+    public boolean processPayment(PaymentCard card) {
+        // No real charge is made for this sprint.
+        return card != null;
+    }
 }
