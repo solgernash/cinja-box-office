@@ -63,9 +63,22 @@ const scrollProgress = document.querySelector(".scroll-progress");
 const MOVIES_API_URL = "http://localhost:8081/api/movies";
 const AUTH_API_URL = "http://localhost:8081/api/auth";
 const USERS_API_URL = "http://localhost:8081/api/users";
+const SHOWS_API_URL = "http://localhost:8081/api/shows";
+const SHOWROOMS_API_URL = "http://localhost:8081/api/showrooms";
+const BOOKINGS_API_URL = "http://localhost:8081/api/bookings";
+const CHECKOUT_API_URL = "http://localhost:8081/api/checkout";
 
 let currentUser = null;
 let favoriteMovieIds = new Set();
+
+// In-progress booking state (see "Booking prototype" section below).
+let currentShowId = null;
+let currentShowLabel = "";
+let currentMovieTitle = "";
+let currentTicketCounts = { adult: 0, senior: 0, child: 0 };
+let selectedShowSeatIds = [];
+let pendingCheckoutAfterLogin = false;
+let showroomsCache = null;
 
 
 /************************************************************
@@ -163,14 +176,64 @@ function normalizeMovieFromBackend(movie) {
     id: movie.id || movie._id?.$oid || movie._id || movie.movieId,
     title: movie.title || "Untitled Movie",
     genre: movie.genre || "Unknown",
-    rating: movie.rating || "NR",
+    // Note: the backend's `rating` field is a numeric score (e.g. 8.7); the
+    // age-rating badge ("PG-13") lives in `ageRating`.
+    rating: movie.ageRating || "NR",
     status: normalizeMovieStatus(movie.status),
     runtime: movie.runtime || "Runtime TBD",
-    showtimes: normalizeShowtimes(movie.showtimes),
+    shows: [],
     description: movie.description || "No description available.",
     poster: movie.posterUrl || movie.poster || movie.imageUrl || "",
     trailer: normalizeTrailerUrl(movie.trailerUrl || movie.trailer || "")
   };
+}
+
+/************************************************************
+ * Real showtimes
+ * ----------------------------------------------------------
+ * Showtimes come from GET /api/shows/movie/{movieId}, not from
+ * the Movie document itself. Attach them to each movie after
+ * the movie list loads so movieCard()/openMovieDetails() can
+ * render real, bookable showtime buttons.
+ ************************************************************/
+function formatShowLabel(show) {
+  const dateLabel = show.showDate
+    ? new Date(`${show.showDate}T00:00:00`).toLocaleDateString(undefined, {
+        month: "short",
+        day: "numeric"
+      })
+    : "TBD";
+
+  const timeLabel = show.showTime
+    ? new Date(`2000-01-01T${show.showTime}`).toLocaleTimeString([], {
+        hour: "numeric",
+        minute: "2-digit"
+      })
+    : "TBD";
+
+  const roomLabel = show.showroomNumber ? `Rm ${show.showroomNumber}` : "";
+
+  return [dateLabel, timeLabel, roomLabel].filter(Boolean).join(" · ");
+}
+
+async function attachShowsToMovies() {
+  await Promise.all(
+    movies.map(async (movie) => {
+      const movieId = getMovieId(movie);
+
+      if (!movieId) {
+        movie.shows = [];
+        return;
+      }
+
+      try {
+        movie.shows = await apiRequest(`${SHOWS_API_URL}/movie/${movieId}`);
+      } catch (error) {
+        console.error(`Could not load showtimes for ${movie.title}:`, error);
+        movie.shows = [];
+      }
+    })
+  );
 }
 
 
@@ -202,6 +265,8 @@ async function fetchMoviesFromBackend() {
       : [];
 
     console.log("Normalized movies:", movies);
+
+    await attachShowsToMovies();
 
     resetGenres();
     loadGenres();
@@ -264,11 +329,13 @@ async function apiRequest(url, options = {}) {
   const data = await response.json().catch(() => ({}));
 
   if (!response.ok) {
-    throw new Error(
+    const error = new Error(
       data.message ||
       data.error ||
       `Request failed with status ${response.status}`
     );
+    error.status = response.status;
+    throw error;
   }
 
   return data;
@@ -536,6 +603,30 @@ function matchesFilters(movie) {
 
 
 /************************************************************
+ * Showtime button rendering (shared by the card grid and the
+ * movie details dialog)
+ ************************************************************/
+function renderShowtimeButtons(movie) {
+  const shows = movie.shows || [];
+
+  if (shows.length === 0) {
+    return `<p class="profile-muted">No showtimes scheduled yet.</p>`;
+  }
+
+  return `
+    <div class="showtimes">
+      ${shows
+        .map(
+          (show) =>
+            `<button type="button" data-show-id="${escapeHtml(show.showId)}" data-movie-id="${escapeHtml(String(getMovieId(movie)))}" data-movie-title="${escapeHtml(movie.title)}">${escapeHtml(formatShowLabel(show))}</button>`
+        )
+        .join("")}
+    </div>
+  `;
+}
+
+
+/************************************************************
  * Movie card rendering
  ************************************************************/
 function movieCard(movie) {
@@ -577,14 +668,7 @@ function movieCard(movie) {
 
     <p>${movie.description}</p>
 
-    <div class="showtimes">
-      ${movie.showtimes
-        .map(
-          (time) =>
-            `<button type="button" data-title="${movie.title}" data-time="${time}">${time}</button>`
-        )
-        .join("")}
-    </div>
+    ${renderShowtimeButtons(movie)}
 
     <button class="details-button" type="button" data-details="${movie.title}">
       View Details + Trailer
@@ -662,14 +746,7 @@ function openMovieDetails(movie) {
         <h2 id="dialogTitle">${movie.title}</h2>
         <p>${movie.description}</p>
 
-        <div class="showtimes">
-          ${movie.showtimes
-            .map(
-              (time) =>
-                `<button type="button" data-title="${movie.title}" data-time="${time}">${time}</button>`
-            )
-            .join("")}
-        </div>
+        ${renderShowtimeButtons(movie)}
 
         ${trailerMarkup}
       </div>
@@ -961,6 +1038,166 @@ function showAdminPortal(user) {
 }
 
 
+/************************************************************
+ * Admin portal: Manage Movies + Manage Showtimes
+ ************************************************************/
+function showAdminSubpanel(panelName) {
+  document.querySelectorAll(".admin-subpanel").forEach((panel) => {
+    panel.hidden = true;
+  });
+
+  const panel = document.querySelector(`#admin${capitalize(panelName)}Panel`);
+
+  if (panel) {
+    panel.hidden = false;
+  }
+
+  if (panelName === "showtimes") {
+    populateShowtimeFormOptions();
+  }
+}
+
+function capitalize(value) {
+  return value ? value.charAt(0).toUpperCase() + value.slice(1) : value;
+}
+
+async function handleAddMovieSubmit(event) {
+  event.preventDefault();
+
+  const form = event.target;
+  const message = document.querySelector("#addMovieMessage");
+  const submitButton = form.querySelector("button[type='submit']");
+
+  const payload = {
+    title: form.querySelector("#movieTitle").value.trim(),
+    genre: form.querySelector("#movieGenre").value,
+    ageRating: form.querySelector("#movieAgeRating").value.trim(),
+    runtime: form.querySelector("#movieRuntime").value.trim(),
+    status: form.querySelector("#movieStatus").value,
+    description: form.querySelector("#movieDescription").value.trim(),
+    poster: form.querySelector("#moviePoster").value.trim(),
+    trailer: form.querySelector("#movieTrailer").value.trim(),
+    cast: form.querySelector("#movieCast").value.trim(),
+    director: form.querySelector("#movieDirector").value.trim(),
+    producer: form.querySelector("#movieProducer").value.trim()
+  };
+
+  if (!payload.title || !payload.genre || !payload.ageRating || !payload.runtime || !payload.description) {
+    message.textContent = "Please fill in all required fields.";
+    return;
+  }
+
+  submitButton.disabled = true;
+  message.textContent = "Adding movie...";
+
+  try {
+    await apiRequest(MOVIES_API_URL, {
+      method: "POST",
+      body: JSON.stringify(payload)
+    });
+
+    message.textContent = `"${payload.title}" was added and now appears on the customer homepage.`;
+    form.reset();
+    await fetchMoviesFromBackend();
+  } catch (error) {
+    message.textContent = error.message;
+  } finally {
+    submitButton.disabled = false;
+  }
+}
+
+async function populateShowtimeFormOptions() {
+  const movieSelect = document.querySelector("#showtimeMovie");
+  const showroomSelect = document.querySelector("#showtimeShowroom");
+
+  movieSelect.innerHTML = movies
+    .map((movie) => `<option value="${escapeHtml(String(getMovieId(movie)))}">${escapeHtml(movie.title)}</option>`)
+    .join("");
+
+  if (!showroomsCache) {
+    try {
+      showroomsCache = await apiRequest(SHOWROOMS_API_URL);
+    } catch (error) {
+      console.error("Could not load showrooms:", error);
+      showroomsCache = [];
+    }
+  }
+
+  showroomSelect.innerHTML = showroomsCache
+    .map((room) => `<option value="${room.showroomNumber}">Showroom ${room.showroomNumber} (${room.totalSeats} seats)</option>`)
+    .join("");
+
+  renderScheduledShowtimes();
+}
+
+async function renderScheduledShowtimes() {
+  const movieId = document.querySelector("#showtimeMovie").value;
+  const list = document.querySelector("#showtimeList");
+
+  if (!movieId) {
+    list.innerHTML = "";
+    return;
+  }
+
+  try {
+    const shows = await apiRequest(`${SHOWS_API_URL}/movie/${movieId}`);
+
+    list.innerHTML = shows.length
+      ? shows
+          .map(
+            (show) => `
+              <div class="profile-card">
+                ${escapeHtml(show.showDate || "")} at ${escapeHtml(show.showTime || "")} — Showroom ${escapeHtml(String(show.showroomNumber ?? ""))}
+              </div>
+            `
+          )
+          .join("")
+      : `<p class="profile-muted">No showtimes scheduled for this movie yet.</p>`;
+  } catch (error) {
+    list.innerHTML = `<p class="profile-muted">${escapeHtml(error.message)}</p>`;
+  }
+}
+
+async function handleAddShowtimeSubmit(event) {
+  event.preventDefault();
+
+  const form = event.target;
+  const message = document.querySelector("#addShowtimeMessage");
+  const submitButton = form.querySelector("button[type='submit']");
+
+  const payload = {
+    movieId: form.querySelector("#showtimeMovie").value,
+    showroomNumber: Number(form.querySelector("#showtimeShowroom").value),
+    date: form.querySelector("#showtimeDate").value,
+    time: form.querySelector("#showtimeTime").value,
+    duration: Number(form.querySelector("#showtimeDuration").value) || 120
+  };
+
+  if (!payload.movieId || !payload.showroomNumber || !payload.date || !payload.time) {
+    message.textContent = "Please fill in all required fields.";
+    return;
+  }
+
+  submitButton.disabled = true;
+  message.textContent = "Scheduling showtime...";
+
+  try {
+    await apiRequest(SHOWS_API_URL, {
+      method: "POST",
+      body: JSON.stringify(payload)
+    });
+
+    message.textContent = "Showtime scheduled successfully.";
+    await renderScheduledShowtimes();
+    await fetchMoviesFromBackend();
+  } catch (error) {
+    message.textContent = error.message;
+  } finally {
+    submitButton.disabled = false;
+  }
+}
+
+
 function showCustomerHome(user) {
   if (adminPortal) {
     adminPortal.hidden = true;
@@ -988,6 +1225,12 @@ function handleSuccessfulLogin(user) {
 
   if (authDialog && authDialog.open) {
     authDialog.close();
+  }
+
+  if (pendingCheckoutAfterLogin && user.role !== "ADMIN") {
+    pendingCheckoutAfterLogin = false;
+    handleContinueToCheckout();
+    return `Welcome back, ${user.firstName || "CINJA member"}. Continuing checkout...`;
   }
 
   if (user.role === "ADMIN") {
@@ -1577,6 +1820,32 @@ async function logoutCurrentUser() {
 /************************************************************
  * Booking prototype
  ************************************************************/
+const bookingError = document.querySelector("#bookingError");
+const startBookingButton = document.querySelector("#startBookingButton");
+const editTicketsButton = document.querySelector("#editTicketsButton");
+const seatMapContainer = document.querySelector("#seatMap");
+const seatMapEmpty = document.querySelector("#seatMapEmpty");
+const continueToCheckoutButton = document.querySelector("#continueToCheckoutButton");
+const checkoutSummaryPanel = document.querySelector("#checkoutSummaryPanel");
+const paymentPanel = document.querySelector("#paymentPanel");
+
+function showBookingStep(step) {
+  document.querySelectorAll("[data-booking-step]").forEach((panel) => {
+    panel.hidden = panel.dataset.bookingStep !== step;
+  });
+}
+
+function setTicketInputsLocked(locked) {
+  document
+    .querySelectorAll(".ticket-inputs input, .ticket-inputs [data-ticket-action]")
+    .forEach((element) => {
+      element.disabled = locked;
+    });
+
+  startBookingButton.hidden = locked;
+  editTicketsButton.hidden = !locked;
+}
+
 function resetBookingSelections() {
   const ticketInputs = document.querySelectorAll(
     "#adultTickets, #childTickets, #seniorTickets, .ticket-inputs input"
@@ -1587,9 +1856,14 @@ function resetBookingSelections() {
     input.dispatchEvent(new Event("input", { bubbles: true }));
   });
 
-  document.querySelectorAll(".seat.selected").forEach((seat) => {
-    seat.classList.remove("selected");
-  });
+  setTicketInputsLocked(false);
+
+  selectedShowSeatIds = [];
+  currentTicketCounts = { adult: 0, senior: 0, child: 0 };
+
+  seatMapContainer.innerHTML = "";
+  seatMapContainer.hidden = true;
+  seatMapEmpty.hidden = false;
 
   const selectedSeats = document.querySelector("#selectedSeats");
 
@@ -1597,6 +1871,10 @@ function resetBookingSelections() {
     selectedSeats.textContent = "None";
   }
 
+  continueToCheckoutButton.disabled = true;
+  bookingError.textContent = "";
+
+  showBookingStep("tickets");
   updateBookingTotal();
 }
 
@@ -1620,7 +1898,7 @@ function setupTicketQuantityControls() {
   document.addEventListener("click", (event) => {
     const button = event.target.closest("[data-ticket-action]");
 
-    if (!button) {
+    if (!button || button.disabled) {
       return;
     }
 
@@ -1655,26 +1933,278 @@ function setupTicketQuantityControls() {
 }
 
 
+function seatCountRequired() {
+  return currentTicketCounts.adult + currentTicketCounts.senior + currentTicketCounts.child;
+}
+
+function renderSeatMap(seats) {
+  seatMapEmpty.hidden = true;
+  seatMapContainer.hidden = false;
+
+  seatMapContainer.innerHTML = seats
+    .map((seat) => {
+      const taken = seat.available === false;
+      return `<button type="button" class="seat${taken ? " taken" : ""}" data-show-seat-id="${escapeHtml(seat.showSeatId)}">${escapeHtml(seat.label)}</button>`;
+    })
+    .join("");
+
+  selectedShowSeatIds = [];
+  updateSelectedSeatsDisplay();
+}
+
+function updateSelectedSeatsDisplay() {
+  const selectedSeats = document.querySelector("#selectedSeats");
+  const labels = [...seatMapContainer.querySelectorAll(".seat.selected")].map(
+    (seat) => seat.textContent.trim()
+  );
+
+  if (selectedSeats) {
+    selectedSeats.textContent = labels.length > 0 ? labels.join(", ") : "None";
+  }
+
+  continueToCheckoutButton.disabled = selectedShowSeatIds.length !== seatCountRequired();
+}
+
 function setupSeatSelection() {
   document.addEventListener("click", (event) => {
-    const seat = event.target.closest(".seat");
+    const seat = event.target.closest("#seatMap .seat");
 
     if (!seat || seat.classList.contains("taken")) {
       return;
     }
 
+    const showSeatId = seat.dataset.showSeatId;
+    const isSelected = seat.classList.contains("selected");
+
+    if (!isSelected && selectedShowSeatIds.length >= seatCountRequired()) {
+      bookingError.textContent = `You can only select ${seatCountRequired()} seat(s) to match your ticket count.`;
+      return;
+    }
+
+    bookingError.textContent = "";
     seat.classList.toggle("selected");
 
-    const selected = [...document.querySelectorAll(".seat.selected")]
-      .map((selectedSeat) => selectedSeat.textContent.trim());
-
-    const selectedSeats = document.querySelector("#selectedSeats");
-
-    if (selectedSeats) {
-      selectedSeats.textContent =
-        selected.length > 0 ? selected.join(", ") : "None";
+    if (isSelected) {
+      selectedShowSeatIds = selectedShowSeatIds.filter((id) => id !== showSeatId);
+    } else {
+      selectedShowSeatIds.push(showSeatId);
     }
+
+    updateSelectedSeatsDisplay();
   });
+}
+
+
+/************************************************************
+ * Booking flow: showtime -> tickets -> seats -> checkout
+ ************************************************************/
+function startBookingFlow(showId, movieTitle, label) {
+  currentShowId = showId;
+  currentMovieTitle = movieTitle;
+  currentShowLabel = label;
+
+  resetBookingSelections();
+
+  const bookingTitle = document.querySelector("#booking-title");
+
+  if (bookingTitle) {
+    bookingTitle.textContent = `${movieTitle} — ${label}`;
+  }
+
+  const bookingSection = document.querySelector("#booking");
+
+  bookingSection.scrollIntoView({ behavior: "smooth", block: "start" });
+  bookingSection.classList.remove("booking-pulse");
+  void bookingSection.offsetWidth;
+  bookingSection.classList.add("booking-pulse");
+
+  if (movieDialog && movieDialog.open) {
+    movieDialog.close();
+  }
+}
+
+async function handleStartBooking() {
+  const adult = Number(document.querySelector("#adultTickets")?.value) || 0;
+  const senior = Number(document.querySelector("#seniorTickets")?.value) || 0;
+  const child = Number(document.querySelector("#childTickets")?.value) || 0;
+
+  if (adult + senior + child < 1) {
+    bookingError.textContent = "Select at least one ticket to start booking.";
+    return;
+  }
+
+  if (!currentShowId) {
+    bookingError.textContent = "Please pick a showtime first.";
+    return;
+  }
+
+  bookingError.textContent = "";
+  startBookingButton.disabled = true;
+
+  try {
+    await apiRequest(`${BOOKINGS_API_URL}/start`, {
+      method: "POST",
+      credentials: "include",
+      body: JSON.stringify({ showId: currentShowId, adult, senior, child })
+    });
+
+    currentTicketCounts = { adult, senior, child };
+    setTicketInputsLocked(true);
+
+    const seats = await apiRequest(`${SHOWS_API_URL}/${currentShowId}/seatmap`);
+    renderSeatMap(seats);
+  } catch (error) {
+    bookingError.textContent = error.message;
+  } finally {
+    startBookingButton.disabled = false;
+  }
+}
+
+function handleEditTickets() {
+  setTicketInputsLocked(false);
+  seatMapContainer.innerHTML = "";
+  seatMapContainer.hidden = true;
+  seatMapEmpty.hidden = false;
+  selectedShowSeatIds = [];
+  continueToCheckoutButton.disabled = true;
+  bookingError.textContent = "";
+
+  const selectedSeats = document.querySelector("#selectedSeats");
+
+  if (selectedSeats) {
+    selectedSeats.textContent = "None";
+  }
+}
+
+async function handleContinueToCheckout() {
+  if (selectedShowSeatIds.length !== seatCountRequired()) {
+    bookingError.textContent = `Select ${seatCountRequired()} seat(s) to continue.`;
+    return;
+  }
+
+  continueToCheckoutButton.disabled = true;
+
+  try {
+    await apiRequest(`${SHOWS_API_URL}/${currentShowId}/select-seats`, {
+      method: "POST",
+      credentials: "include",
+      body: JSON.stringify({ showSeatIds: selectedShowSeatIds })
+    });
+  } catch (error) {
+    bookingError.textContent = error.message;
+    continueToCheckoutButton.disabled = false;
+
+    // A seat may have just been taken by someone else; refresh the map.
+    try {
+      const seats = await apiRequest(`${SHOWS_API_URL}/${currentShowId}/seatmap`);
+      renderSeatMap(seats);
+    } catch (refreshError) {
+      console.error("Could not refresh seat map:", refreshError);
+    }
+
+    return;
+  }
+
+  try {
+    const summary = await apiRequest(`${CHECKOUT_API_URL}/summary`, {
+      credentials: "include"
+    });
+
+    renderCheckoutSummary(summary);
+    showBookingStep("summary");
+  } catch (error) {
+    if (error.status === 401) {
+      pendingCheckoutAfterLogin = true;
+      openAuthModal();
+
+      if (authMessage) {
+        authMessage.textContent = "Please log in to continue checkout.";
+      }
+    } else {
+      bookingError.textContent = error.message;
+    }
+  } finally {
+    continueToCheckoutButton.disabled = false;
+  }
+}
+
+function renderCheckoutSummary(summary) {
+  const ticketRows = (summary.tickets || [])
+    .map(
+      (line) => `
+        <tr>
+          <td>${escapeHtml(line.type)}</td>
+          <td>${line.count}</td>
+          <td>$${Number(line.pricePerTicket).toFixed(2)}</td>
+          <td>$${Number(line.subtotal).toFixed(2)}</td>
+        </tr>
+      `
+    )
+    .join("");
+
+  checkoutSummaryPanel.innerHTML = `
+    <h2>Order Summary</h2>
+    <dl class="profile-details">
+      <div><dt>Movie</dt><dd>${escapeHtml(summary.movieTitle || "")}</dd></div>
+      <div><dt>Showtime</dt><dd>${escapeHtml(summary.showDate || "")} ${escapeHtml(summary.showTime || "")} (Room ${escapeHtml(String(summary.showroomNumber ?? ""))})</dd></div>
+      <div><dt>Seats</dt><dd>${escapeHtml((summary.selectedSeats || []).join(", "))}</dd></div>
+    </dl>
+
+    <table class="checkout-table">
+      <thead><tr><th>Type</th><th>Qty</th><th>Price</th><th>Subtotal</th></tr></thead>
+      <tbody>${ticketRows}</tbody>
+    </table>
+
+    <p class="checkout-total"><strong>Total before tax:</strong> $${Number(summary.totalBeforeTax).toFixed(2)}</p>
+
+    <form id="checkoutEmailForm" class="auth-form">
+      <label for="checkoutEmail">Confirmation Email</label>
+      <input id="checkoutEmail" type="email" value="${escapeHtml(summary.email || "")}" required>
+
+      <div class="profile-edit-actions">
+        <button class="secondary-button" id="backToSeatsButton" type="button">Back to Seats</button>
+        <button class="primary-button" type="submit">Proceed to Payment</button>
+      </div>
+      <p id="checkoutMessage" class="auth-message" aria-live="polite"></p>
+    </form>
+  `;
+}
+
+async function handleProceedToPayment(event) {
+  event.preventDefault();
+
+  const form = event.target;
+  const email = form.querySelector("#checkoutEmail").value.trim();
+  const checkoutMessage = form.querySelector("#checkoutMessage");
+  const submitButton = form.querySelector("button[type='submit']");
+
+  submitButton.disabled = true;
+  checkoutMessage.textContent = "Processing...";
+
+  try {
+    const payment = await apiRequest(`${CHECKOUT_API_URL}/proceed`, {
+      method: "POST",
+      credentials: "include",
+      body: JSON.stringify({ email })
+    });
+
+    paymentPanel.innerHTML = `
+      <h2>Payment (Mockup)</h2>
+      <p class="profile-muted">${escapeHtml(payment.message || "")}</p>
+      <dl class="profile-details">
+        <div><dt>Booking Number</dt><dd>${escapeHtml(payment.bookingNumber || "")}</dd></div>
+        <div><dt>Confirmation Email</dt><dd>${escapeHtml(payment.email || "")}</dd></div>
+        <div><dt>Total Charged</dt><dd>$${Number(payment.totalBeforeTax).toFixed(2)}</dd></div>
+      </dl>
+      <button class="primary-button" id="bookAnotherButton" type="button">Book Another Movie</button>
+    `;
+
+    showBookingStep("payment");
+  } catch (error) {
+    checkoutMessage.textContent = error.message;
+  } finally {
+    submitButton.disabled = false;
+  }
 }
 
 
@@ -1693,9 +2223,12 @@ function handleClick(event) {
   const deleteCardButton = event.target.closest("[data-delete-card-id]");
   const removeFavoriteButton = event.target.closest("[data-remove-favorite-id]");
   const detailsButton = event.target.closest("[data-details]");
-  const showtimeButton = event.target.closest("[data-title][data-time]");
+  const showtimeButton = event.target.closest("[data-show-id]");
   const authTab = event.target.closest("[data-auth-tab]");
   const cancelProfileEdit = event.target.closest("#cancelProfileEdit");
+  const adminMenuCard = event.target.closest("[data-admin-panel]");
+  const backToSeatsButton = event.target.closest("#backToSeatsButton");
+  const bookAnotherButton = event.target.closest("#bookAnotherButton");
   
   if (favoriteButton) {
   toggleFavoriteMovie(
@@ -1760,40 +2293,27 @@ function handleClick(event) {
   }
 
   if (showtimeButton) {
-    const showtimeTitle = showtimeButton.dataset.title;
-    const showtime = showtimeButton.dataset.time;
+    startBookingFlow(
+      showtimeButton.dataset.showId,
+      showtimeButton.dataset.movieTitle,
+      showtimeButton.textContent.trim()
+    );
+    return;
+  }
 
-    if (!showtime || showtime === "Coming Soon") {
-      return;
-    }
+  if (adminMenuCard) {
+    showAdminSubpanel(adminMenuCard.dataset.adminPanel);
+    return;
+  }
 
-    const bookingSection = document.querySelector("#booking");
+  if (backToSeatsButton) {
+    showBookingStep("tickets");
+    return;
+  }
 
-    if (!bookingSection) {
-      console.warn("Booking section not found. Make sure it has id='booking'.");
-      return;
-    }
-
-    const bookingTitle = bookingSection.querySelector("#booking-title");
-
+  if (bookAnotherButton) {
     resetBookingSelections();
-
-    if (bookingTitle) {
-      bookingTitle.textContent = `${showtimeTitle} at ${showtime}`;
-    }
-
-    bookingSection.scrollIntoView({
-      behavior: "smooth",
-      block: "start"
-    });
-
-    bookingSection.classList.remove("booking-pulse");
-    void bookingSection.offsetWidth;
-    bookingSection.classList.add("booking-pulse");
-
-    if (movieDialog && movieDialog.open) {
-      movieDialog.close();
-    }
+    document.querySelector("#movie-grid").scrollIntoView({ behavior: "smooth", block: "start" });
   }
 }
 
@@ -1915,6 +2435,20 @@ movieDialog.addEventListener("click", (event) => {
     movieDialog.close();
   }
 });
+
+startBookingButton.addEventListener("click", handleStartBooking);
+editTicketsButton.addEventListener("click", handleEditTickets);
+continueToCheckoutButton.addEventListener("click", handleContinueToCheckout);
+
+checkoutSummaryPanel.addEventListener("submit", (event) => {
+  if (event.target.id === "checkoutEmailForm") {
+    handleProceedToPayment(event);
+  }
+});
+
+document.querySelector("#addMovieForm").addEventListener("submit", handleAddMovieSubmit);
+document.querySelector("#addShowtimeForm").addEventListener("submit", handleAddShowtimeSubmit);
+document.querySelector("#showtimeMovie").addEventListener("change", renderScheduledShowtimes);
 
 
 /************************************************************

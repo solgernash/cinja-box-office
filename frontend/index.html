@@ -96,6 +96,7 @@
     </section>
   
     <section id="booking" class="booking-preview reveal customer-view">
+    <div class="booking-step" data-booking-step="tickets">
     <div class="booking-copy">
       <p class="section-kicker">Booking Page</p>
       <h2>Choose Your Tickets</h2>
@@ -143,37 +144,39 @@
     </div>
   </div>
 </div>
+
+      <div class="booking-step-actions">
+        <button class="primary-button" id="startBookingButton" type="button">Start Booking</button>
+        <button class="secondary-button" id="editTicketsButton" type="button" hidden>Edit Tickets</button>
+      </div>
+      <p id="bookingError" class="booking-error" aria-live="polite"></p>
     </div>
 
   <div class="booking-card">
     <h3>Select Seats</h3>
     <div class="screen">SCREEN</div>
 
-    <div class="seat-map">
-      <button class="seat">A1</button>
-      <button class="seat">A2</button>
-      <button class="seat">A3</button>
-      <button class="seat">A4</button>
+    <p id="seatMapEmpty" class="profile-muted">Enter your ticket counts and click "Start Booking" to see the seat map.</p>
 
-      <button class="seat">B1</button>
-      <button class="seat">B2</button>
-      <button class="seat taken">B3</button>
-      <button class="seat">B4</button>
-
-      <button class="seat">C1</button>
-      <button class="seat">C2</button>
-      <button class="seat">C3</button>
-      <button class="seat">C4</button>
-    </div>
+    <div id="seatMap" class="seat-map" hidden></div>
 
       <p>Selected seats: <span id="selectedSeats">None</span></p>
 
       <p><strong>Total:</strong> <span id="bookingTotal">$0.00</span></p>
 
-      <button class="primary-button" type="button">
+      <button class="primary-button" id="continueToCheckoutButton" type="button" disabled>
         Continue to Checkout
       </button>
       </div>
+    </div>
+
+    <div class="booking-step" data-booking-step="summary" hidden>
+      <div id="checkoutSummaryPanel" class="checkout-panel"></div>
+    </div>
+
+    <div class="booking-step" data-booking-step="payment" hidden>
+      <div id="paymentPanel" class="checkout-panel"></div>
+    </div>
     </section>
 
     <section id="admin-portal" class="admin-portal" hidden aria-labelledby="admin-title">
@@ -187,23 +190,113 @@
       </div>
 
       <div class="admin-menu" aria-label="Admin menu">
-        <button class="admin-menu-card" type="button">
+        <button class="admin-menu-card" type="button" data-admin-panel="movies">
           <span>Manage Movies</span>
           <small>Add, edit, remove, and review movie listings.</small>
         </button>
-        <button class="admin-menu-card" type="button">
+        <button class="admin-menu-card" type="button" data-admin-panel="promotions">
           <span>Promotions</span>
           <small>Create promo codes and schedule campaign offers.</small>
         </button>
-        <button class="admin-menu-card" type="button">
+        <button class="admin-menu-card" type="button" data-admin-panel="users">
           <span>Users</span>
           <small>Review customers, admins, and account status.</small>
         </button>
-        <button class="admin-menu-card" type="button">
+        <button class="admin-menu-card" type="button" data-admin-panel="showtimes">
           <span>Showtimes</span>
           <small>Manage dates, screens, and available seat windows.</small>
         </button>
       </div>
+
+      <section id="adminMoviesPanel" class="admin-subpanel" hidden>
+        <h2>Add a Movie</h2>
+        <form id="addMovieForm" class="auth-form admin-form">
+          <label for="movieTitle">Title <span class="required">*</span></label>
+          <input id="movieTitle" type="text" required>
+
+          <label for="movieGenre">Genre <span class="required">*</span></label>
+          <select id="movieGenre" required>
+            <option value="ACTION">Action</option>
+            <option value="COMEDY">Comedy</option>
+            <option value="DRAMA">Drama</option>
+            <option value="HORROR">Horror</option>
+            <option value="ROMANCE">Romance</option>
+            <option value="SCI_FI">Sci-Fi</option>
+            <option value="THRILLER">Thriller</option>
+            <option value="ANIMATION">Animation</option>
+            <option value="ADVENTURE">Adventure</option>
+          </select>
+
+          <label for="movieAgeRating">Age Rating <span class="required">*</span></label>
+          <input id="movieAgeRating" type="text" placeholder="PG-13" required>
+
+          <label for="movieRuntime">Runtime <span class="required">*</span></label>
+          <input id="movieRuntime" type="text" placeholder="2h 04m" required>
+
+          <label for="movieStatus">Status <span class="required">*</span></label>
+          <select id="movieStatus" required>
+            <option value="RUNNING">Currently Running</option>
+            <option value="COMING_SOON">Coming Soon</option>
+          </select>
+
+          <label for="movieDescription">Description <span class="required">*</span></label>
+          <textarea id="movieDescription" rows="3" required></textarea>
+
+          <label for="moviePoster">Poster URL</label>
+          <input id="moviePoster" type="url" placeholder="https://...">
+
+          <label for="movieTrailer">Trailer URL</label>
+          <input id="movieTrailer" type="url" placeholder="https://youtube.com/watch?v=...">
+
+          <label for="movieCast">Cast</label>
+          <input id="movieCast" type="text">
+
+          <label for="movieDirector">Director</label>
+          <input id="movieDirector" type="text">
+
+          <label for="movieProducer">Studio</label>
+          <input id="movieProducer" type="text">
+
+          <button class="primary-button" type="submit">Add Movie</button>
+          <p id="addMovieMessage" class="auth-message" aria-live="polite"></p>
+        </form>
+      </section>
+
+      <section id="adminShowtimesPanel" class="admin-subpanel" hidden>
+        <h2>Schedule a Showtime</h2>
+        <form id="addShowtimeForm" class="auth-form admin-form">
+          <label for="showtimeMovie">Movie <span class="required">*</span></label>
+          <select id="showtimeMovie" required></select>
+
+          <label for="showtimeShowroom">Showroom <span class="required">*</span></label>
+          <select id="showtimeShowroom" required></select>
+
+          <label for="showtimeDate">Date <span class="required">*</span></label>
+          <input id="showtimeDate" type="date" required>
+
+          <label for="showtimeTime">Time <span class="required">*</span></label>
+          <input id="showtimeTime" type="time" required>
+
+          <label for="showtimeDuration">Duration (minutes)</label>
+          <input id="showtimeDuration" type="number" min="1" placeholder="120">
+
+          <button class="primary-button" type="submit">Schedule Showtime</button>
+          <p id="addShowtimeMessage" class="auth-message" aria-live="polite"></p>
+        </form>
+
+        <h3>Scheduled Showtimes for This Movie</h3>
+        <div id="showtimeList" class="profile-list"></div>
+      </section>
+
+      <section id="adminPromotionsPanel" class="admin-subpanel" hidden>
+        <h2>Promotions</h2>
+        <p class="profile-muted">Promotion management is not required for this sprint.</p>
+      </section>
+
+      <section id="adminUsersPanel" class="admin-subpanel" hidden>
+        <h2>Users</h2>
+        <p class="profile-muted">User management is not required for this sprint.</p>
+      </section>
     </section>
   </main>
 
