@@ -16,21 +16,9 @@ import org.springframework.web.server.ResponseStatusException;
 import java.util.List;
 import java.util.Map;
 
-/*
- * Checkout: order summary + (mock) payment page.
- *
- * Login is REQUIRED to proceed to checkout (seats may be selected while logged
- * out; the session keeps the selection through the login step). The order
- * summary shows movie, showtime, seats, ticket counts/types, price per ticket
- * and total before tax. Real payment/confirmation is a later deliverable.
- * Base URL: /api/checkout
- */
 @RestController
 @RequestMapping("/api/checkout")
-@CrossOrigin(
-        originPatterns = {"http://localhost:*", "http://127.0.0.1:*", "null"},
-        allowCredentials = "true"
-)
+@CrossOrigin(originPatterns = { "http://localhost:*", "http://127.0.0.1:*", "null" }, allowCredentials = "true")
 public class CheckoutController {
 
     private final CheckoutService checkoutService;
@@ -41,7 +29,7 @@ public class CheckoutController {
         this.userRepository = userRepository;
     }
 
-    // GET /api/checkout/summary  -> order summary (requires login)
+    // GET /api/checkout/summary -> order summary (requires login)
     @GetMapping("/summary")
     public Map<String, Object> summary(HttpSession session) {
         String userId = requireLogin(session);
@@ -54,10 +42,11 @@ public class CheckoutController {
                 seatIds, emailFor(userId));
     }
 
-    // POST /api/checkout/proceed  -> confirm email, create pending booking, show payment mockup
+    // POST /api/checkout/proceed -> confirm email, create pending booking, show
+    // payment mockup
     @PostMapping("/proceed")
     public Map<String, Object> proceed(@RequestBody(required = false) ProceedRequest request,
-                                       HttpSession session) {
+            HttpSession session) {
         String userId = requireLogin(session);
         String showId = (String) session.getAttribute("bk_showId");
         List<String> seatIds = seatIds(session);
@@ -72,11 +61,9 @@ public class CheckoutController {
                 ? request.email().trim()
                 : emailFor(userId);
 
-        Map<String, Object> summary =
-                checkoutService.buildSummary(showId, adult, senior, child, seatIds, email);
-        double total = ((Number) summary.get("totalBeforeTax")).doubleValue();
+        Map<String, Object> summary = checkoutService.buildSummary(showId, adult, senior, child, seatIds, email);
 
-        return checkoutService.proceedToPayment(userId, showId, total, email);
+        return checkoutService.proceedToPayment(userId, showId, summary, email);
     }
 
     // ---------------- Helpers ----------------

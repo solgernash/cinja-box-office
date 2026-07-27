@@ -7,6 +7,10 @@ import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
 // Sends account emails (confirmation, password reset, profile-change notice) via Gmail SMTP.
 // Credentials come from application.properties (spring.mail.*). Until a real Gmail address is
 // configured there, emails are logged to the console instead of sent. Sending is wrapped so it
@@ -50,6 +54,47 @@ public class EmailService {
                 + "<p>This is a confirmation that your Cinja Box Office profile information "
                 + "was recently changed. If this was not you, please reset your password.</p>";
         send(toEmail, "Your Cinja Box Office profile was updated", html, null);
+    }
+
+    /*
+     * Order confirmation sent at checkout. Builds an HTML summary from the
+     * checkout summary map (movie, showtime, seats, tickets, total before tax).
+     */
+    public void sendCheckoutConfirmationEmail(String toEmail, Map<String, Object> summary, String bookingNumber) {
+        StringBuilder html = new StringBuilder();
+        html.append("<h2>Your Cinja Box Office order</h2>");
+        html.append("<p>Thank you for your order! Here is your summary.</p>");
+        html.append("<p><strong>Booking #:</strong> ").append(bookingNumber).append("</p>");
+        html.append("<p><strong>Movie:</strong> ").append(summary.get("movieTitle")).append("</p>");
+        html.append("<p><strong>Showtime:</strong> ").append(summary.get("showDate"))
+                .append(" ").append(summary.get("showTime"))
+                .append(" (Showroom ").append(summary.get("showroomNumber")).append(")</p>");
+
+        html.append("<p><strong>Seats:</strong> ");
+        if (summary.get("selectedSeats") instanceof List<?> seatList) {
+            List<String> parts = new ArrayList<>();
+            for (Object seat : seatList) {
+                parts.add(String.valueOf(seat));
+            }
+            html.append(String.join(", ", parts));
+        }
+        html.append("</p>");
+
+        html.append("<p><strong>Tickets:</strong></p><ul>");
+        if (summary.get("tickets") instanceof List<?> lines) {
+            for (Object lineObj : lines) {
+                if (lineObj instanceof Map<?, ?> line) {
+                    html.append("<li>").append(line.get("count")).append(" x ").append(line.get("type"))
+                            .append(" @ $").append(line.get("pricePerTicket"))
+                            .append(" = $").append(line.get("subtotal")).append("</li>");
+                }
+            }
+        }
+        html.append("</ul>");
+        html.append("<p><strong>Total (before tax):</strong> $").append(summary.get("totalBeforeTax")).append("</p>");
+        html.append("<p>Payment is processed on the payment page.</p>");
+
+        send(toEmail, "Your Cinja Box Office order confirmation", html.toString(), null);
     }
 
     // Configured once a real Gmail address (containing "@") is set in application.properties.
