@@ -1,13 +1,13 @@
 package com.cinema.service;
 
+import com.cinema.model.Booking;
+import com.cinema.model.Ticket;
 import com.cinema.model.TicketType;
 import org.springframework.stereotype.Service;
 
-/*
- * Ticket pricing by age category. Used by the checkout order summary and booking.
- * (Ticket generation/persistence is part of the final-demo checkout flow and is
- * not required for the Sprint 3 minimum, which stops at the payment mockup.)
- */
+import java.util.ArrayList;
+import java.util.List;
+
 @Service
 public class TicketService {
 
@@ -21,5 +21,17 @@ public class TicketService {
             case SENIOR -> SENIOR_PRICE;
             case CHILD -> CHILD_PRICE;
         };
+    }
+
+    /*
+     * Used by the CheckoutFacade (final-demo flow). Minimal placeholder: returns
+     * any tickets already attached to the booking (empty otherwise). Full ticket
+     * generation/persistence will be completed for the final demo.
+     */
+    public List<Ticket> generateTickets(Booking booking) {
+        if (booking != null && booking.getTickets() != null) {
+            return booking.getTickets();
+        }
+        return new ArrayList<>();
     }
 }

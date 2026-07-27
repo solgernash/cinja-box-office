@@ -1,5 +1,7 @@
 package com.cinema.service;
 
+import com.cinema.model.Booking;
+import com.cinema.model.Customer;
 import jakarta.mail.internet.MimeMessage;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
@@ -95,6 +97,19 @@ public class EmailService {
         html.append("<p>Payment is processed on the payment page.</p>");
 
         send(toEmail, "Your Cinja Box Office order confirmation", html.toString(), null);
+    }
+
+    /*
+     * Used by the CheckoutFacade (final-demo flow): booking confirmation email
+     * addressed to the customer.
+     */
+    public void sendConfirmationEmail(Customer customer, Booking booking) {
+        String to = customer != null ? customer.getEmail() : null;
+        String bookingNumber = booking != null ? booking.getBookingNumber() : null;
+        String html = "<h2>Your Cinja Box Office booking is confirmed</h2>"
+                + "<p><strong>Booking #:</strong> " + bookingNumber + "</p>"
+                + "<p>Thank you for booking with Cinja Box Office.</p>";
+        send(to, "Your Cinja Box Office booking confirmation", html, null);
     }
 
     // Configured once a real Gmail address (containing "@") is set in application.properties.

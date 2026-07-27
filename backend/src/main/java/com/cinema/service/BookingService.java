@@ -9,15 +9,6 @@ import org.springframework.stereotype.Service;
 
 import java.util.Date;
 
-/*
- * Creates bookings using the BookingBuilder (Builder design pattern) instead of
- * constructing Booking objects with many setters.
- *
- * For the Sprint 3 minimum the checkout stops at the payment mockup, so this
- * persists a pending booking (no payment reference, not cancelled). Only minimal
- * customer/show references are attached to keep the stored document small and
- * free of the two-way object cycles present in the model.
- */
 @Service
 public class BookingService {
 
@@ -35,15 +26,38 @@ public class BookingService {
         showRef.setShowId(showId);
 
         Booking booking = new BookingBuilder()
-                .setBookingNumber(null)          // MongoDB generates the id
+                .setBookingNumber(null) // MongoDB generates the id
                 .setBookingDate(new Date())
                 .setTotalOrderPrice(totalBeforeTax)
                 .setTax(0.0)
                 .setBookingFee(0.0)
-                .setPaymentReference(null)       // no payment yet (mockup)
+                .setPaymentReference(null) // no payment yet (mockup)
                 .setCancelled(false)
                 .setCustomer(customerRef)
                 .setShow(showRef)
+                .build();
+
+        return bookingRepository.save(booking);
+    }
+
+    /*
+     * Overload used by the CheckoutFacade (final-demo flow). Builds a booking for
+     * a customer via the Builder pattern; show/tickets/totals are attached by the
+     * facade flow. Kept minimal so the facade compiles and runs when uncommented.
+     */
+    public Booking createBooking(Customer customer) {
+        Customer customerRef = new Customer();
+        customerRef.setUser_ID(customer != null ? customer.getUser_ID() : null);
+
+        Booking booking = new BookingBuilder()
+                .setBookingNumber(null)
+                .setBookingDate(new Date())
+                .setTotalOrderPrice(0.0)
+                .setTax(0.0)
+                .setBookingFee(0.0)
+                .setPaymentReference(null)
+                .setCancelled(false)
+                .setCustomer(customerRef)
                 .build();
 
         return bookingRepository.save(booking);
