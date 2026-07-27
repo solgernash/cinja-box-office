@@ -1140,7 +1140,8 @@ input:focus, select:focus { border-color: rgba(248,193,74,0.8); box-shadow: 0 0 
 }
 
 .booking-preview > .booking-step[data-booking-step="summary"],
-.booking-preview > .booking-step[data-booking-step="payment"] {
+.booking-preview > .booking-step[data-booking-step="payment"],
+.booking-preview > .booking-step[data-booking-step="confirmation"] {
   grid-column: 1 / -1;
 }
 
@@ -1243,4 +1244,67 @@ input:focus, select:focus { border-color: rgba(248,193,74,0.8); box-shadow: 0 0 
 .admin-form .primary-button {
   cursor: pointer;
   margin-top: 0.5rem;
+}
+
+/* Payment step + confirmation step */
+.payment-card-options {
+  margin: 0.75rem 0 1rem;
+}
+
+.payment-card-option {
+  cursor: pointer;
+  border-width: 2px;
+  transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.payment-card-option:hover {
+  transform: translateY(-2px);
+}
+
+.payment-card-option.selected {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 3px rgba(248, 193, 74, 0.28), 0 18px 46px rgba(0, 0, 0, 0.38);
+}
+
+.checkbox-label {
+  display: flex !important;
+  align-items: center;
+  gap: 0.6rem;
+  color: var(--muted);
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+.checkbox-label input {
+  width: auto;
+  accent-color: var(--gold);
+}
+
+.confirmation-check {
+  display: grid;
+  place-items: center;
+  width: 4rem;
+  height: 4rem;
+  margin: 0 auto 1.25rem;
+  border-radius: 50%;
+  color: #111;
+  font-size: 2rem;
+  font-weight: 900;
+  background: var(--gold);
+  box-shadow: 0 0 40px rgba(248, 193, 74, 0.5);
+}
+
+#confirmationPanel h2 {
+  text-align: center;
+}
+
+#confirmationPanel > .profile-muted {
+  text-align: center;
+}
+
+#confirmationPanel #bookAnotherButton {
+  display: block;
+  width: 100%;
+  margin-top: 1.25rem;
+  cursor: pointer;
 }

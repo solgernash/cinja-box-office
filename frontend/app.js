@@ -79,6 +79,8 @@ let currentTicketCounts = { adult: 0, senior: 0, child: 0 };
 let selectedShowSeatIds = [];
 let pendingCheckoutAfterLogin = false;
 let showroomsCache = null;
+let currentCheckoutSummary = null;
+let selectedPaymentCardId = null;
 
 
 /************************************************************
@@ -1828,6 +1830,7 @@ const seatMapEmpty = document.querySelector("#seatMapEmpty");
 const continueToCheckoutButton = document.querySelector("#continueToCheckoutButton");
 const checkoutSummaryPanel = document.querySelector("#checkoutSummaryPanel");
 const paymentPanel = document.querySelector("#paymentPanel");
+const confirmationPanel = document.querySelector("#confirmationPanel");
 
 function showBookingStep(step) {
   document.querySelectorAll("[data-booking-step]").forEach((panel) => {
@@ -1873,6 +1876,12 @@ function resetBookingSelections() {
 
   continueToCheckoutButton.disabled = true;
   bookingError.textContent = "";
+
+  currentCheckoutSummary = null;
+  selectedPaymentCardId = null;
+  checkoutSummaryPanel.innerHTML = "";
+  paymentPanel.innerHTML = "";
+  confirmationPanel.innerHTML = "";
 
   showBookingStep("tickets");
   updateBookingTotal();
@@ -2129,6 +2138,8 @@ async function handleContinueToCheckout() {
 }
 
 function renderCheckoutSummary(summary) {
+  currentCheckoutSummary = summary;
+
   const ticketRows = (summary.tickets || [])
     .map(
       (line) => `
@@ -2163,48 +2174,212 @@ function renderCheckoutSummary(summary) {
 
       <div class="profile-edit-actions">
         <button class="secondary-button" id="backToSeatsButton" type="button">Back to Seats</button>
-        <button class="primary-button" type="submit">Proceed to Payment</button>
+        <button class="primary-button" type="submit">Continue to Payment</button>
       </div>
       <p id="checkoutMessage" class="auth-message" aria-live="polite"></p>
     </form>
   `;
 }
 
-async function handleProceedToPayment(event) {
+function handleContinueToPayment(event) {
   event.preventDefault();
 
   const form = event.target;
   const email = form.querySelector("#checkoutEmail").value.trim();
-  const checkoutMessage = form.querySelector("#checkoutMessage");
+
+  if (!email) {
+    form.querySelector("#checkoutMessage").textContent = "Please enter a confirmation email.";
+    return;
+  }
+
+  currentCheckoutSummary = { ...currentCheckoutSummary, email };
+  selectedPaymentCardId = null;
+
+  renderPaymentStep();
+  showBookingStep("payment");
+}
+
+
+/************************************************************
+ * Payment step: show a saved card if the customer has one,
+ * otherwise (or if they choose to) collect a new card.
+ ************************************************************/
+function renderPaymentStep() {
+  const cards = (currentUser && currentUser.cards) || [];
+  const hasSavedCards = cards.length > 0;
+
+  paymentPanel.innerHTML = `
+    <h2>Payment</h2>
+    <p class="profile-muted">${escapeHtml(currentCheckoutSummary.movieTitle || "")} — $${Number(currentCheckoutSummary.totalBeforeTax).toFixed(2)} total</p>
+
+    <div id="paymentCardArea"></div>
+
+    <form id="paymentForm" class="auth-form">
+      <div class="profile-edit-actions">
+        <button class="secondary-button" id="backToSummaryButton" type="button">Back to Summary</button>
+        <button class="primary-button" type="submit">Pay $${Number(currentCheckoutSummary.totalBeforeTax).toFixed(2)}</button>
+      </div>
+      <p id="paymentMessage" class="auth-message" aria-live="polite"></p>
+    </form>
+  `;
+
+  if (hasSavedCards) {
+    selectedPaymentCardId = String(
+      cards[0].id || cards[0].cardId || cards[0]._id?.$oid || cards[0]._id || ""
+    );
+    renderSavedCardOptions(cards);
+  } else {
+    renderNewCardFields();
+  }
+}
+
+function renderSavedCardOptions(cards) {
+  const area = document.querySelector("#paymentCardArea");
+
+  area.innerHTML = `
+    <p class="section-kicker">Choose a saved card</p>
+    <div class="credit-card-grid payment-card-options">
+      ${cards
+        .map((card) => {
+          const cardId = String(card.id || card.cardId || card._id?.$oid || card._id || "");
+          const displayNumber = getCardDisplayNumber(card);
+          const formattedNumber = displayNumber.includes("•")
+            ? displayNumber
+            : `•••• •••• •••• ${displayNumber}`;
+          const isSelected = cardId === selectedPaymentCardId;
+
+          return `
+            <article class="saved-credit-card payment-card-option ${isSelected ? "selected" : ""}" data-select-card-id="${escapeHtml(cardId)}">
+              <div class="credit-card-topline">
+                <span class="credit-card-brand">CINJA CARD</span>
+                <span class="credit-card-chip"></span>
+              </div>
+              <div class="credit-card-number">${escapeHtml(formattedNumber)}</div>
+              <div class="credit-card-bottom">
+                <div>
+                  <span class="credit-card-label">Cardholder</span>
+                  <strong>${escapeHtml(card.cardholderName || "Cardholder")}</strong>
+                </div>
+                <div>
+                  <span class="credit-card-label">Expires</span>
+                  <strong>${escapeHtml(card.expirationDate || "N/A")}</strong>
+                </div>
+              </div>
+            </article>
+          `;
+        })
+        .join("")}
+    </div>
+    <button class="auth-link-button" type="button" data-payment-action="new-card">Use a different card</button>
+  `;
+}
+
+function renderNewCardFields() {
+  const area = document.querySelector("#paymentCardArea");
+  const cards = (currentUser && currentUser.cards) || [];
+
+  area.innerHTML = `
+    <p class="section-kicker">${cards.length > 0 ? "New card" : "Enter your card details"}</p>
+    <div class="auth-form">
+      <label for="paymentCardholderName">Cardholder Name <span class="required">*</span></label>
+      <input id="paymentCardholderName" type="text" autocomplete="cc-name" required>
+
+      <label for="paymentCardNumber">Card Number <span class="required">*</span></label>
+      <input id="paymentCardNumber" type="text" inputmode="numeric" autocomplete="cc-number" placeholder="1234123412341234" required>
+
+      <label for="paymentExpirationDate">Expiration Date <span class="required">*</span></label>
+      <input id="paymentExpirationDate" type="text" autocomplete="cc-exp" placeholder="MM/YY" required>
+
+      ${
+        currentUser
+          ? `
+            <label class="checkbox-label">
+              <input id="paymentSaveCard" type="checkbox" checked>
+              Save this card to my profile
+            </label>
+          `
+          : ""
+      }
+    </div>
+    ${cards.length > 0 ? `<button class="auth-link-button" type="button" data-payment-action="use-saved">Use a saved card instead</button>` : ""}
+  `;
+
+  selectedPaymentCardId = null;
+}
+
+async function handlePaymentSubmit(event) {
+  event.preventDefault();
+
+  const form = event.target;
+  const paymentMessage = form.querySelector("#paymentMessage");
   const submitButton = form.querySelector("button[type='submit']");
+  const newCardNumber = document.querySelector("#paymentCardNumber");
+
+  if (!selectedPaymentCardId && newCardNumber) {
+    const cardholderName = document.querySelector("#paymentCardholderName").value.trim();
+    const cardNumber = newCardNumber.value.trim();
+    const expirationDate = document.querySelector("#paymentExpirationDate").value.trim();
+
+    if (!cardholderName || !cardNumber || !expirationDate) {
+      paymentMessage.textContent = "Please fill in all card fields.";
+      return;
+    }
+
+    const saveCardBox = document.querySelector("#paymentSaveCard");
+
+    if (saveCardBox && saveCardBox.checked) {
+      try {
+        await apiRequest(`${USERS_API_URL}/${getCurrentUserId()}/cards`, {
+          method: "POST",
+          body: JSON.stringify({ cardholderName, cardNumber, expirationDate })
+        });
+      } catch (error) {
+        // Not fatal to checkout — proceed with payment even if saving the card failed.
+        console.error("Could not save card to profile:", error);
+      }
+    }
+  }
 
   submitButton.disabled = true;
-  checkoutMessage.textContent = "Processing...";
+  paymentMessage.textContent = "Processing payment...";
 
   try {
     const payment = await apiRequest(`${CHECKOUT_API_URL}/proceed`, {
       method: "POST",
       credentials: "include",
-      body: JSON.stringify({ email })
+      body: JSON.stringify({ email: currentCheckoutSummary.email })
     });
 
-    paymentPanel.innerHTML = `
-      <h2>Payment (Mockup)</h2>
-      <p class="profile-muted">${escapeHtml(payment.message || "")}</p>
-      <dl class="profile-details">
-        <div><dt>Booking Number</dt><dd>${escapeHtml(payment.bookingNumber || "")}</dd></div>
-        <div><dt>Confirmation Email</dt><dd>${escapeHtml(payment.email || "")}</dd></div>
-        <div><dt>Total Charged</dt><dd>$${Number(payment.totalBeforeTax).toFixed(2)}</dd></div>
-      </dl>
-      <button class="primary-button" id="bookAnotherButton" type="button">Book Another Movie</button>
-    `;
-
-    showBookingStep("payment");
+    renderConfirmationPanel(payment);
+    showBookingStep("confirmation");
   } catch (error) {
-    checkoutMessage.textContent = error.message;
+    paymentMessage.textContent = error.message;
   } finally {
     submitButton.disabled = false;
   }
+}
+
+function renderConfirmationPanel(payment) {
+  const summary = currentCheckoutSummary || {};
+
+  confirmationPanel.innerHTML = `
+    <div class="confirmation-check" aria-hidden="true">✓</div>
+    <h2>Booking Confirmed!</h2>
+    <p class="profile-muted">Your payment was processed successfully and your seats are reserved.</p>
+
+    <dl class="profile-details">
+      <div><dt>Booking Number</dt><dd>${escapeHtml(payment.bookingNumber || "")}</dd></div>
+      <div><dt>Movie</dt><dd>${escapeHtml(summary.movieTitle || "")}</dd></div>
+      <div><dt>Showtime</dt><dd>${escapeHtml(summary.showDate || "")} ${escapeHtml(summary.showTime || "")} (Room ${escapeHtml(String(summary.showroomNumber ?? ""))})</dd></div>
+      <div><dt>Seats</dt><dd>${escapeHtml((summary.selectedSeats || []).join(", "))}</dd></div>
+      <div><dt>Total Charged</dt><dd>$${Number(payment.totalBeforeTax).toFixed(2)}</dd></div>
+      <div><dt>Confirmation Email</dt><dd>${escapeHtml(payment.email || "")}</dd></div>
+    </dl>
+
+    <p class="profile-muted">A confirmation email with your ticket details has been sent to ${escapeHtml(payment.email || "your email")}.</p>
+
+    <button class="primary-button" id="bookAnotherButton" type="button">Book Another Movie</button>
+  `;
 }
 
 
@@ -2228,8 +2403,11 @@ function handleClick(event) {
   const cancelProfileEdit = event.target.closest("#cancelProfileEdit");
   const adminMenuCard = event.target.closest("[data-admin-panel]");
   const backToSeatsButton = event.target.closest("#backToSeatsButton");
+  const backToSummaryButton = event.target.closest("#backToSummaryButton");
   const bookAnotherButton = event.target.closest("#bookAnotherButton");
-  
+  const selectCardOption = event.target.closest("[data-select-card-id]");
+  const paymentActionButton = event.target.closest("[data-payment-action]");
+
   if (favoriteButton) {
   toggleFavoriteMovie(
     favoriteButton.dataset.favoriteMovieId,
@@ -2308,6 +2486,28 @@ function handleClick(event) {
 
   if (backToSeatsButton) {
     showBookingStep("tickets");
+    return;
+  }
+
+  if (backToSummaryButton) {
+    showBookingStep("summary");
+    return;
+  }
+
+  if (selectCardOption) {
+    selectedPaymentCardId = selectCardOption.dataset.selectCardId;
+    document.querySelectorAll(".payment-card-option").forEach((card) => {
+      card.classList.toggle("selected", card.dataset.selectCardId === selectedPaymentCardId);
+    });
+    return;
+  }
+
+  if (paymentActionButton) {
+    if (paymentActionButton.dataset.paymentAction === "new-card") {
+      renderNewCardFields();
+    } else if (paymentActionButton.dataset.paymentAction === "use-saved") {
+      renderSavedCardOptions(currentUser.cards);
+    }
     return;
   }
 
@@ -2442,7 +2642,13 @@ continueToCheckoutButton.addEventListener("click", handleContinueToCheckout);
 
 checkoutSummaryPanel.addEventListener("submit", (event) => {
   if (event.target.id === "checkoutEmailForm") {
-    handleProceedToPayment(event);
+    handleContinueToPayment(event);
+  }
+});
+
+paymentPanel.addEventListener("submit", (event) => {
+  if (event.target.id === "paymentForm") {
+    handlePaymentSubmit(event);
   }
 });
 
