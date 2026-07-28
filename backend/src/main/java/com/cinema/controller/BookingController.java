@@ -14,6 +14,15 @@ import org.springframework.web.server.ResponseStatusException;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+
+
+import com.cinema.model.Booking;
+import com.cinema.service.BookingService;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+
+import java.util.List;
+
 /*
  * Starts a booking: the user picks a showtime and enters how many tickets of
  * each age category. The in-progress order is stored in the HTTP session (the
@@ -28,9 +37,18 @@ import java.util.Map;
 public class BookingController {
 
     private final ShowService showService;
+    private final BookingService bookingService;
 
-    public BookingController(ShowService showService) {
+    public BookingController(ShowService showService, BookingService bookingService) {
         this.showService = showService;
+        this.bookingService = bookingService;
+    }
+
+    @GetMapping("/history/{customerId}")
+    public List<Booking> getOrderHistory(
+            @PathVariable String customerId
+    ) {
+        return bookingService.getOrderHistory(customerId);
     }
 
     // POST /api/bookings/start  -> choose show + ticket counts
