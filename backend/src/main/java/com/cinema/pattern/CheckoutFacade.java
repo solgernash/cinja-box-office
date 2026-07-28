@@ -1,4 +1,4 @@
-/* package com.cinema.pattern;
+ package com.cinema.pattern;
 
 import com.cinema.model.*;
 import com.cinema.service.*;
@@ -55,4 +55,4 @@ public class CheckoutFacade {
 
         return booking;
     }
-}  */
+}   //end class
