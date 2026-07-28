@@ -8,6 +8,7 @@ import com.cinema.repository.BookingRepository;
 import org.springframework.stereotype.Service;
 
 import java.util.Date;
+import java.util.List;
 
 @Service
 public class BookingService {
@@ -62,4 +63,13 @@ public class BookingService {
 
         return bookingRepository.save(booking);
     }
+
+    public List<Booking> getOrderHistory(String customerId) {
+
+        Customer customer = new Customer();
+        customer.setUser_ID(customerId);
+
+        return bookingRepository.findByCustomer(customer);
+    }
+
 }
