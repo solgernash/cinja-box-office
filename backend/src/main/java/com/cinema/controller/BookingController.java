@@ -5,6 +5,7 @@ import jakarta.servlet.http.HttpSession;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -12,16 +13,11 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
-
-
-import com.cinema.model.Booking;
+import com.cinema.model.OrderHistoryItem;
 import com.cinema.service.BookingService;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-
-import java.util.List;
 
 /*
  * Starts a booking: the user picks a showtime and enters how many tickets of
@@ -44,11 +40,26 @@ public class BookingController {
         this.bookingService = bookingService;
     }
 
+    // GET /api/bookings/history -> orders for the currently logged-in customer
+    @GetMapping("/history")
+    public List<OrderHistoryItem> getOrderHistory(HttpSession session) {
+        return bookingService.getOrderHistory(requireLogin(session));
+    }
+
+    /*
+     * Backward-compatible route for clients that already include the customer
+     * id. The session check prevents one customer from requesting another
+     * customer's history.
+     */
     @GetMapping("/history/{customerId}")
-    public List<Booking> getOrderHistory(
-            @PathVariable String customerId
-    ) {
-        return bookingService.getOrderHistory(customerId);
+    public List<OrderHistoryItem> getOrderHistory(@PathVariable String customerId, HttpSession session) {
+        String loggedInCustomerId = requireLogin(session);
+        if (!loggedInCustomerId.equals(customerId)) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "You can only view your own order history");
+        }
+        return bookingService.getOrderHistory(loggedInCustomerId);
     }
 
     // POST /api/bookings/start  -> choose show + ticket counts
@@ -95,6 +106,16 @@ public class BookingController {
     private int intAttr(HttpSession session, String key) {
         Object value = session.getAttribute(key);
         return value instanceof Integer ? (Integer) value : 0;
+    }
+
+    private String requireLogin(HttpSession session) {
+        Object userId = session.getAttribute("userId");
+        if (userId == null) {
+            throw new ResponseStatusException(
+                    HttpStatus.UNAUTHORIZED,
+                    "Please log in to view your order history");
+        }
+        return userId.toString();
     }
 
     public record StartBookingRequest(String showId, int adult, int senior, int child) {

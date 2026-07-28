@@ -15,6 +15,7 @@ public class Booking {
     private Double totalOrderPrice;
     private Double tax;
     private Double bookingFee;
+    private int ticketCount;
     private String paymentReference;
     private boolean isCancelled;
 
@@ -82,6 +83,14 @@ public class Booking {
         this.bookingFee = bookingFee;
     }
 
+    public int getTicketCount() {
+        return ticketCount;
+    }
+
+    public void setTicketCount(int ticketCount) {
+        this.ticketCount = ticketCount;
+    }
+
     public String getPaymentReference() {
         return paymentReference;
     }
@@ -139,5 +148,4 @@ public class Booking {
         this.show = show;
     }
 }
-
 

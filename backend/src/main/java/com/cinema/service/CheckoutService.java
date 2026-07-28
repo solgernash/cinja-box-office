@@ -76,7 +76,9 @@ public class CheckoutService {
     public Map<String, Object> proceedToPayment(String customerId, String showId,
             Map<String, Object> summary, String email) {
         double totalBeforeTax = ((Number) summary.get("totalBeforeTax")).doubleValue();
-        Booking booking = bookingService.createBooking(customerId, showId, totalBeforeTax);
+        int totalTickets = ((Number) summary.getOrDefault("totalTickets", 0)).intValue();
+        Booking booking = bookingService.createBooking(
+                customerId, showId, totalBeforeTax, totalTickets);
 
         // Order confirmation email (logged if mail is not configured; never throws).
         emailService.sendCheckoutConfirmationEmail(email, summary, booking.getBookingNumber());

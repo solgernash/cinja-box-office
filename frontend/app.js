@@ -363,12 +363,20 @@ async function loadFullUserProfile() {
   const profile = await apiRequest(`${USERS_API_URL}/${userId}`);
   const cards = await apiRequest(`${USERS_API_URL}/${userId}/cards`);
   const favorites = await apiRequest(`${USERS_API_URL}/${userId}/favorites`);
+  const orderHistory = await apiRequest(`${BOOKINGS_API_URL}/history`, {
+    credentials: "include"
+  })
+    .catch((error) => {
+      console.error("Could not load order history:", error);
+      return [];
+    });
 
   currentUser = normalizeProfileResponse({
     ...currentUser,
     ...profile,
     cards,
-    favorites
+    favorites,
+    orderHistory: Array.isArray(orderHistory) ? orderHistory : []
   });
 
   favoriteMovieIds = new Set(
@@ -434,6 +442,97 @@ function renderPaymentCards(cards) {
               >
                 Remove
               </button>
+            </article>
+          `;
+        })
+        .join("")}
+    </div>
+  `;
+}
+
+function formatOrderDate(value) {
+  if (!value) {
+    return "Date unavailable";
+  }
+
+  const date = new Date(value);
+  return Number.isNaN(date.getTime())
+    ? "Date unavailable"
+    : new Intl.DateTimeFormat("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+        hour: "numeric",
+        minute: "2-digit"
+      }).format(date);
+}
+
+function formatMoney(value) {
+  const amount = Number(value);
+  return Number.isFinite(amount) ? `$${amount.toFixed(2)}` : "$0.00";
+}
+
+function getOrderMovieTitle(order) {
+  return (
+    order?.show?.movie?.title ||
+    order?.movieTitle ||
+    "Movie details unavailable"
+  );
+}
+
+function renderOrderHistory(orders) {
+  if (!orders || orders.length === 0) {
+    return `<p class="profile-muted">You have not placed any orders yet.</p>`;
+  }
+
+  return `
+    <div class="order-history-list">
+      ${orders
+        .map((order) => {
+          const ticketCount = Array.isArray(order.tickets)
+            ? order.tickets.length
+            : Number.isFinite(Number(order.ticketCount))
+              ? Number(order.ticketCount)
+              : null;
+          const total =
+            Number(order.totalOrderPrice || 0) +
+            Number(order.tax || 0) +
+            Number(order.bookingFee || 0);
+
+          return `
+            <article class="order-history-card">
+              <div class="order-history-heading">
+                <div>
+                  <span class="order-history-label">Booking</span>
+                  <strong>${escapeHtml(order.bookingNumber || "Pending")}</strong>
+                </div>
+                <span class="order-status ${order.cancelled ? "cancelled" : ""}">
+                  ${order.cancelled ? "Cancelled" : "Confirmed"}
+                </span>
+              </div>
+
+              <h4>${escapeHtml(getOrderMovieTitle(order))}</h4>
+
+              <dl class="order-history-details">
+                <div>
+                  <dt>Ordered</dt>
+                  <dd>${escapeHtml(formatOrderDate(order.bookingDate))}</dd>
+                </div>
+                ${
+                  ticketCount !== null
+                    ? `
+                      <div>
+                        <dt>Tickets</dt>
+                        <dd>${ticketCount}</dd>
+                      </div>
+                    `
+                    : ""
+                }
+                <div>
+                  <dt>Total</dt>
+                  <dd>${escapeHtml(formatMoney(total))}</dd>
+                </div>
+              </dl>
             </article>
           `;
         })
@@ -1271,6 +1370,7 @@ function renderProfile(user) {
   const address = user.address;
   const cards = user.cards || [];
   const favorites = user.favorites || [];
+  const orderHistory = user.orderHistory || [];
 
   profileContent.innerHTML = `
     <section class="profile-section">
@@ -1368,6 +1468,17 @@ function renderProfile(user) {
           `
           : `<p class="profile-muted">No favorite movies yet. Use the heart button while browsing movies.</p>`
       }
+    </section>
+
+    <section class="profile-section">
+      <div class="profile-section-header">
+        <h3>Order History</h3>
+        <span class="profile-limit-note">
+          ${orderHistory.length} ${orderHistory.length === 1 ? "order" : "orders"}
+        </span>
+      </div>
+
+      ${renderOrderHistory(orderHistory)}
     </section>
   `;
 
