@@ -2004,7 +2004,7 @@ function updateBookingTotal() {
   const childTickets = Number(document.querySelector("#childTickets")?.value) || 0;
   const seniorTickets = Number(document.querySelector("#seniorTickets")?.value) || 0;
 
-  const total = adultTickets * 12 + childTickets * 8 + seniorTickets * 10;
+  const total = adultTickets * 17.50 + childTickets * 10.00 + seniorTickets * 14.00;
 
   const bookingTotal = document.querySelector("#bookingTotal");
 
